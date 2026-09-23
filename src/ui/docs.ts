@@ -3,7 +3,9 @@ import type { DayDef } from '../data/days';
 import { itemsInGroup } from '../data/items';
 import { RULES } from '../data/rules';
 import { faceURL } from '../gfx/portrait';
-import { itemSprite } from '../gfx/sprite';
+import { CLOTH_IDS, clothSprite, itemSprite } from '../gfx/sprite';
+import { sfx } from '../audio';
+import { Rng } from '../rng';
 import { itemName } from '../judge';
 import { VALID_ID_TYPES, type Attendee, type BagItem, type Consent, type IdCard, type Note, type Prescription, type Ticket } from '../types';
 
@@ -117,12 +119,74 @@ export function cashEl(amount: number): HTMLElement {
   return el;
 }
 
-export function bagEl(items: BagItem[], title = 'BAG CONTENTS'): HTMLElement {
-  const el = h('div', 'doc bag');
-  el.innerHTML = `<div class="bag-head">${title}</div><div class="bag-grid"></div>`;
-  const grid = el.querySelector('.bag-grid')!;
-  for (const it of items) grid.appendChild(itemCell(it));
-  if (!items.length) grid.innerHTML = '<div class="bag-empty">(empty)</div>';
+const MAIN_W = 268;
+const CELL_W = 66;
+const CELL_H = 62;
+
+/**
+ * A searchable bag: arrives zipped, items sit in the main compartment with a couple of bits of clothing
+ * on top that must be dragged out, and there's a separate zipped side pocket.
+ */
+export function bagEl(items: BagItem[], seed: number): HTMLElement {
+  const rng = new Rng(seed);
+  const el = h('div', 'doc bag closed');
+  el.innerHTML = `
+    <div class="bag-head">BAG <span class="bag-state">- zipped</span></div>
+    <div class="bag-closed"><div class="bag-body"><div class="bag-handle"></div><div class="bag-zip">&lt;= UNZIP =&gt;</div></div></div>
+    <div class="bag-open">
+      <div class="bag-main"></div>
+      <div class="bag-info">Hover or tap an item to see what it is</div>
+      <div class="bag-pocket closed"><div class="pocket-zip">SIDE POCKET - click to unzip</div><div class="pocket-in"></div></div>
+    </div>`;
+  const main = el.querySelector('.bag-main') as HTMLElement;
+  const pocketIn = el.querySelector('.pocket-in') as HTMLElement;
+  const loose = items.filter((i) => !i.pocket);
+  // A tidy grid: one item per slot, so nothing is ever buried under another item.
+  const rows = Math.max(1, Math.ceil(loose.length / 4));
+  main.style.height = `${rows * CELL_H + 6}px`;
+  const spots: { x: number; y: number }[] = [];
+  rng.shuffle([...loose]).forEach((it, i) => {
+    const x = 4 + (i % 4) * CELL_W + rng.int(-2, 2);
+    const y = 4 + Math.floor(i / 4) * CELL_H + rng.int(-2, 2);
+    const cell = itemCell(it);
+    cell.style.left = `${x}px`;
+    cell.style.top = `${y}px`;
+    cell.style.transform = `rotate(${rng.int(-6, 6)}deg)`;
+    main.appendChild(cell);
+    spots.push({ x, y });
+  });
+  if (!loose.length) main.innerHTML = '<div class="bag-empty">(just crumbs)</div>';
+  // One or two bits of clothing, each lying over a different item.
+  const clothColors = ['#c83a3a', '#3a6ac8', '#2a2a2a', '#e8e8e8', '#3aa05a', '#e0a030', '#8a4ac8', '#e070a0', '#40b0c0'];
+  const covered = rng.shuffle([...spots]).slice(0, loose.length >= 4 ? 2 : loose.length ? 1 : 0);
+  for (const spot of covered) {
+    const s = clothSprite(rng.pick(CLOTH_IDS), rng.pick(clothColors));
+    const img = new Image();
+    img.src = s.url;
+    img.draggable = false;
+    img.className = 'cloth';
+    const w = s.w * 3.5;
+    const hh = s.h * 3.5;
+    img.style.width = `${w}px`;
+    img.style.height = `${hh}px`;
+    img.style.left = `${Math.max(0, Math.min(MAIN_W - w, spot.x + 28 - w / 2))}px`;
+    img.style.top = `${Math.max(0, spot.y + 28 - hh / 2)}px`;
+    img.style.transform = `rotate(${rng.int(-8, 8)}deg)`;
+    main.appendChild(img);
+  }
+  for (const it of items.filter((i) => i.pocket)) pocketIn.appendChild(itemCell(it));
+  if (!pocketIn.children.length) pocketIn.innerHTML = '<div class="bag-empty">(a single fluffy boiled sweet)</div>';
+
+  el.querySelector('.bag-zip')!.addEventListener('tap', () => {
+    el.classList.remove('closed');
+    el.querySelector('.bag-state')!.textContent = '- open';
+    sfx.zip();
+  });
+  const pocket = el.querySelector('.bag-pocket') as HTMLElement;
+  el.querySelector('.pocket-zip')!.addEventListener('tap', () => {
+    pocket.classList.toggle('closed');
+    sfx.zip();
+  });
   return el;
 }
 
@@ -145,7 +209,7 @@ export function itemCell(it: BagItem): HTMLElement {
 
 export function patdownEl(att: Attendee): HTMLElement {
   const el = h('div', 'doc patdown');
-  el.innerHTML = `<div class="bag-head">PAT-DOWN REPORT</div><div class="pd-wrap"><div class="pd-body"></div><div class="bag-grid pd-grid"></div></div>`;
+  el.innerHTML = `<div class="bag-head">PAT-DOWN REPORT</div><div class="pd-wrap"><div class="pd-body"></div><div class="bag-grid pd-grid"></div></div><div class="bag-info">Hover or tap an item to see what it is</div>`;
   const grid = el.querySelector('.pd-grid')!;
   for (const it of att.body) grid.appendChild(itemCell(it));
   return el;
@@ -193,10 +257,8 @@ export function rulebookEl(day: DayDef): HTMLElement {
     e.stopPropagation();
     el.classList.add('closed');
   });
-  el.querySelector('.rb-closed')!.addEventListener('click', () => {
-    if (el.dataset.dragged === '1') return;
-    el.classList.remove('closed');
-  });
+  // 'tap' = pointer released without dragging (see Shift.makeDraggable).
+  el.querySelector('.rb-closed')!.addEventListener('tap', () => el.classList.remove('closed'));
   show(0);
   return el;
 }
@@ -241,7 +303,7 @@ function itemsPage(day: DayDef): HTMLElement {
   for (const r of groups) {
     const row = h('div', 'rb-irow f');
     row.dataset.field = `book.group:${r.group}`;
-    const action = r.group === 'weapon' || r.group === 'drug' ? (day.rules.includes('detain') ? 'DETAIN' : 'DENY') : r.action;
+    const action = r.group === 'weapon' || r.group === 'drug' ? (day.rules.includes('detain') ? 'POLICE' : 'DENY') : r.action;
     row.innerHTML = `<span class="act act-${action.toLowerCase()}">${action}</span><b>${esc(r.title)}</b>`;
     const icons = h('div', 'rb-icons');
     const shown = r.group === 'drug' ? itemsInGroup('drug').filter((d) => d.id !== 'pillTin') : itemsInGroup(r.group!);

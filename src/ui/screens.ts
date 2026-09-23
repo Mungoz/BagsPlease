@@ -5,7 +5,8 @@ import { RULES } from '../data/rules';
 import { randomFace } from '../gfx/portrait';
 import { Scene } from '../gfx/scene';
 import { Rng } from '../rng';
-import { applyBills, PRICES, statusText, type Bills } from '../state';
+import { canFullscreen, isTouch, toggleFullscreen } from '../fullscreen';
+import { GOAL, MEALS, NIGHT_OPTIONS, SHOP, STAT_NAMES, type Meal, type NightChoice } from '../state';
 import type { GameState } from '../types';
 import { h } from './docs';
 import type { ShiftResult } from './shift';
@@ -51,8 +52,9 @@ export function titleScreen(
       <div class="title-btns">
         <button class="btn btn-endless">ENDLESS SHIFT${best ? ` <small>(best ${best})</small>` : ''}</button>
         <button class="btn btn-mute">${isMuted() ? 'SOUND: OFF' : 'SOUND: ON'}</button>
+        ${canFullscreen() ? '<button class="btn btn-fs">FULLSCREEN</button>' : ''}
       </div>
-      <div class="title-foot">A festival security game &middot; Space = inspect &middot; Esc = pause &middot; M = mute</div>
+      <div class="title-foot">Progress saves automatically in this browser at the start of each day.<br>${isTouch() ? (canFullscreen() ? 'Tap anywhere to go fullscreen' : 'Tip: Share &gt; Add to Home Screen to play fullscreen') : 'Space = inspect &middot; Esc = pause &middot; M = mute'}</div>
     </div>`;
   const scene = new Scene(el.querySelector('canvas')!);
   const rng = new Rng(Date.now() & 0xffff);
@@ -80,6 +82,11 @@ export function titleScreen(
     sfx.click();
     onEndless();
   });
+  el.querySelector('.btn-fs')?.addEventListener('click', (e) => {
+    // The first-tap handler may already have gone fullscreen on this very tap.
+    e.stopPropagation();
+    toggleFullscreen();
+  });
   const mute = el.querySelector('.btn-mute') as HTMLElement;
   mute.addEventListener('click', () => {
     mute.textContent = toggleMute() ? 'SOUND: OFF' : 'SOUND: ON';
@@ -100,6 +107,12 @@ export function briefingScreen(g: GameState, onStart: () => void): HTMLElement {
     .map((x, i) => `<div class="news ${i === 0 ? 'lead' : ''}"><h3>${esc(x.title)}</h3><p>${esc(x.body)}</p></div>`)
     .join('');
   const rules = day.newRules.map((r) => `<li><span class="act act-${RULES[r].action.toLowerCase()}">${RULES[r].action}</span> ${esc(RULES[r].title)}</li>`).join('');
+  const c = g.camp;
+  const warn: string[] = [];
+  if (c.energy >= 2) warn.push("You're knackered - the shift will fly by.");
+  if (c.hunger >= 3) warn.push("You're starving - you might faint before the gates close.");
+  if (c.hygiene >= 2) warn.push('You smell. People will notice.');
+  if (c.morale >= 3) warn.push("Your morale is broken - you'll earn £1 less per attendee.");
   el.innerHTML = `
     <div class="paper">
       <div class="paper-mast">THE GREYWATER GAZETTE</div>
@@ -111,6 +124,7 @@ export function briefingScreen(g: GameState, onStart: () => void): HTMLElement {
       <div class="mb-ev" style="--ev:${day.event.color}">${esc(day.event.name)}<small>${esc(fmtShort(day.date))}</small></div>
       <div class="mb-body">${day.memo.map((m) => `<p>${esc(m)}</p>`).join('')}</div>
       ${rules ? `<div class="mb-rules"><b>NEW RULES</b><ul>${rules}</ul></div>` : ''}
+      ${warn.length ? `<div class="mb-warn">${warn.map(esc).join('<br>')}</div>` : ''}
       <div class="mb-sign">- M. Kettle, Head of Gate Security</div>
       <button class="btn btn-big btn-start">START SHIFT</button>
     </div>`;
@@ -121,120 +135,159 @@ export function briefingScreen(g: GameState, onStart: () => void): HTMLElement {
   return el;
 }
 
-export function summaryScreen(g: GameState, r: ShiftResult, onNext: (bills: Bills) => void): HTMLElement {
+function statBars(g: GameState): string {
+  return (Object.keys(STAT_NAMES) as (keyof typeof STAT_NAMES)[])
+    .map((k) => {
+      const v = g.camp[k];
+      const s = STAT_NAMES[k];
+      return `<div class="stat" title="${esc(s.effect)}"><span class="stat-t">${s.title}</span><span class="stat-bar">${[0, 1, 2, 3].map((i) => `<i class="${i < 4 - v ? 'on lv' + v : ''}"></i>`).join('')}</span><span class="stat-l lv${v}">${s.levels[v]}</span></div>`;
+    })
+    .join('');
+}
+
+/** End of shift: pay, then an evening at crew camp spending it. */
+export function campScreen(g: GameState, r: ShiftResult, onNext: (choice: NightChoice) => void): HTMLElement {
   const day = DAYS[g.day];
   const el = h('div', 'screen summary');
   const extras = r.extras.reduce((s, x) => s + x.amount, 0);
   const income = g.money + r.salary - r.fines + extras - day.rent;
-  const alive = g.family.filter((m) => !m.gone);
-  const sick = alive.filter((m) => m.sick > 0);
-  const bills: Bills = { food: true, electric: true, medicine: Object.fromEntries(sick.map((m) => [m.id, true])) };
+  const choice: NightChoice = { meal: 'burger', extras: new Set(['shower']), buy: new Set() };
 
-  const lines = [
+  const ledger = [
     ['SAVINGS', `£${g.money}`],
-    [`SALARY (${r.processed} processed)`, `+£${r.salary}`],
-    [`CITATIONS (${r.citations.length})`, r.fines ? `-£${r.fines}` : '£0'],
-    ...r.extras.map((x) => [x.label, `+£${x.amount}`]),
-    [`RENT`, `-£${day.rent}`],
+    [`WAGES (${r.processed} processed)`, `+£${r.salary}`],
+    [`FINES (${r.citations.length} citations)`, r.fines ? `-£${r.fines}` : '£0'],
+    ...r.extras.map((x) => [x.label, x.amount >= 0 ? `+£${x.amount}` : `-£${-x.amount}`]),
+    ['CREW CAMP PITCH FEE', `-£${day.rent}`],
   ];
+  const owned = new Set(g.camp.owned);
   el.innerHTML = `
     <div class="sum-box">
-      <h2>END OF DAY ${day.n}</h2>
-      <div class="sum-sub">${esc(fmtShort(day.date))} &middot; ${esc(day.event.name)} &middot; ${r.correct}/${r.processed} processed correctly</div>
+      <div class="sum-top">
+        <div><h2>CREW CAMP - NIGHT ${day.n}</h2><div class="sum-sub">${esc(day.event.name)} &middot; ${r.correct}/${r.processed} correct${r.citations.length ? ` &middot; <span class="cit-inline" title="${esc(r.citations.join('\n'))}">${r.citations.length} citation${r.citations.length > 1 ? 's' : ''}</span>` : ' &middot; clean shift!'}</div></div>
+        <div class="goal"><small>NAN'S NEW HIP FUND</small><div class="goal-bar"><i style="width:${Math.min(100, Math.max(0, (g.money / GOAL) * 100))}%"></i></div><small class="goal-n">£${g.money} / £${GOAL}</small></div>
+      </div>
       <div class="sum-cols">
         <div class="ledger">
-          ${lines.map(([a, b]) => `<div class="lr"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
-          <div class="lr bill" data-bill="food"><span><i class="cb"></i>FOOD</span><span>-£${PRICES.food}</span></div>
-          <div class="lr bill" data-bill="electric"><span><i class="cb"></i>ELECTRIC</span><span>-£${PRICES.electric}</span></div>
-          ${sick.map((m) => `<div class="lr bill" data-bill="med:${m.id}"><span><i class="cb"></i>MEDICINE (${esc(m.name)})</span><span>-£${PRICES.medicine}</span></div>`).join('')}
-          <div class="lr total"><span>TOTAL</span><span class="tot"></span></div>
+          ${ledger.map(([a, b]) => `<div class="lr"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+          <h3>TONIGHT</h3>
+          <div class="meals">${(Object.keys(MEALS) as Meal[]).map((m) => `<div class="meal" data-meal="${m}">${esc(MEALS[m].label)}<small>${MEALS[m].cost ? '£' + MEALS[m].cost : 'free'}</small></div>`).join('')}</div>
+          ${NIGHT_OPTIONS.map((o) => `<div class="lr opt" data-opt="${o.id}"><span><i class="cb"></i>${esc(o.label)} <small>${esc(o.desc)}</small></span><span>-£${o.cost}</span></div>`).join('')}
+          <div class="lr total"><span>LEFT IN YOUR POCKET</span><span class="tot"></span></div>
         </div>
         <div class="family">
-          <h3>AT HOME</h3>
-          ${g.family.map((m) => `<div class="fm ${m.gone ? 'gone' : ''}"><b>${esc(m.name)}</b> <small>${esc(m.rel)}</small><span class="st st-${statusText(m) === 'OK' ? 'ok' : 'bad'}">${esc(statusText(m))}</span></div>`).join('')}
-          ${r.citations.length ? `<h3>CITATIONS</h3><ul class="cits">${r.citations.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : '<h3>CITATIONS</h3><p class="clean">A clean shift. Kettle nods at you.</p>'}
+          <h3>HOW YOU'RE DOING</h3>
+          ${statBars(g)}
+          <h3>CREW SHOP <small>(yours for good)</small></h3>
+          ${SHOP.map((o) => `<div class="lr shop ${owned.has(o.id) ? 'owned' : ''}" data-buy="${o.id}"><span><i class="cb"></i>${esc(o.label)} <small>${esc(o.desc)}</small></span><span>${owned.has(o.id) ? 'OWNED' : '-£' + o.cost}</span></div>`).join('')}
         </div>
       </div>
       <button class="btn btn-big btn-next-day">SLEEP</button>
     </div>`;
 
-  const total = () => {
-    let t = income;
-    if (bills.food) t -= PRICES.food;
-    if (bills.electric) t -= PRICES.electric;
-    for (const k of Object.keys(bills.medicine)) if (bills.medicine[k]) t -= PRICES.medicine;
+  const cost = () => {
+    let t = MEALS[choice.meal].cost;
+    for (const o of NIGHT_OPTIONS) if (choice.extras.has(o.id)) t += o.cost;
+    for (const o of SHOP) if (choice.buy.has(o.id)) t += o.cost;
     return t;
   };
+  const total = () => income - cost();
   const refresh = () => {
-    el.querySelectorAll('.bill').forEach((b) => {
-      const key = (b as HTMLElement).dataset.bill!;
-      const on = key.startsWith('med:') ? bills.medicine[key.slice(4)] : bills[key as 'food' | 'electric'];
-      b.classList.toggle('on', on);
-    });
+    el.querySelectorAll<HTMLElement>('.meal').forEach((m) => m.classList.toggle('on', m.dataset.meal === choice.meal));
+    el.querySelectorAll<HTMLElement>('.opt').forEach((o) => o.classList.toggle('on', choice.extras.has(o.dataset.opt!)));
+    el.querySelectorAll<HTMLElement>('.shop').forEach((o) => o.classList.toggle('on', choice.buy.has(o.dataset.buy!) || owned.has(o.dataset.buy!)));
     const t = total();
     const tot = el.querySelector('.tot')!;
     tot.textContent = `£${t}`;
     tot.classList.toggle('neg', t < 0);
   };
-  // Can't pay for what you can't afford: untick bills until the total is non-negative (rent always comes first).
-  const order: (() => void)[] = [...sick.map((m) => () => (bills.medicine[m.id] = false)), () => (bills.electric = false), () => (bills.food = false)];
-  for (const drop of order) if (total() < 0) drop();
-  el.querySelectorAll('.bill').forEach((b) =>
-    b.addEventListener('click', () => {
-      const key = (b as HTMLElement).dataset.bill!;
-      if (key.startsWith('med:')) bills.medicine[key.slice(4)] = !bills.medicine[key.slice(4)];
-      else bills[key as 'food' | 'electric'] = !bills[key as 'food' | 'electric'];
-      if (total() < 0 && income >= 0) {
-        // revert: not enough money
-        if (key.startsWith('med:')) bills.medicine[key.slice(4)] = false;
-        else bills[key as 'food' | 'electric'] = false;
-        sfx.buzz();
-      } else sfx.click();
-      refresh();
+  const afford = (undo: () => void) => {
+    if (total() < 0 && income >= 0) {
+      undo();
+      sfx.buzz();
+    } else sfx.click();
+    refresh();
+  };
+  // Start with what you can afford.
+  if (total() < 0) choice.extras.clear();
+  if (total() < 0) choice.meal = 'noodles';
+  if (total() < 0) choice.meal = 'none';
+
+  el.querySelectorAll<HTMLElement>('.meal').forEach((m) =>
+    m.addEventListener('click', () => {
+      const prev = choice.meal;
+      choice.meal = m.dataset.meal as Meal;
+      afford(() => (choice.meal = prev));
+    }),
+  );
+  el.querySelectorAll<HTMLElement>('.opt').forEach((o) =>
+    o.addEventListener('click', () => {
+      const id = o.dataset.opt!;
+      if (choice.extras.has(id)) choice.extras.delete(id);
+      else choice.extras.add(id);
+      afford(() => choice.extras.delete(id));
+    }),
+  );
+  el.querySelectorAll<HTMLElement>('.shop').forEach((o) =>
+    o.addEventListener('click', () => {
+      const id = o.dataset.buy!;
+      if (owned.has(id)) return;
+      if (choice.buy.has(id)) choice.buy.delete(id);
+      else choice.buy.add(id);
+      afford(() => choice.buy.delete(id));
     }),
   );
   refresh();
   el.querySelector('.btn-next-day')!.addEventListener('click', () => {
     sfx.click();
     g.money = total();
-    onNext(bills);
+    onNext(choice);
   });
   return el;
 }
 
-export function nightNews(g: GameState, bills: Bills): string[] {
-  return applyBills(g, bills, Math.random);
-}
-
 export function newsScreen(lines: string[], onNext: () => void): HTMLElement {
   const el = h('div', 'screen news-screen');
-  el.innerHTML = `<div class="night"><h2>THAT NIGHT</h2>${lines.map((l) => `<p>${esc(l)}</p>`).join('')}<button class="btn btn-big">CONTINUE</button></div>`;
+  el.innerHTML = `<div class="night"><h2>THAT NIGHT AT CREW CAMP</h2>${lines.map((l) => `<p>${esc(l)}</p>`).join('')}<button class="btn btn-big">CONTINUE</button></div>`;
   el.querySelector('button')!.addEventListener('click', onNext);
   return el;
 }
 
-export type EndingId = 'evicted' | 'alone' | 'arrested' | 'freefest' | 'company' | 'season';
+export type EndingId = 'skint' | 'collapsed' | 'quit' | 'arrested' | 'freefest' | 'company' | 'season';
 
 const ENDINGS: Record<EndingId, { title: string; good: boolean; text: string[] }> = {
-  evicted: {
-    title: 'EVICTED',
+  skint: {
+    title: 'SKINT',
     good: false,
     text: [
-      "You couldn't make the rent.",
-      'The landlord changed the locks while you were checking bags at Gate 3. Your things were in bin bags on the pavement when you got home.',
-      "Greywater Fields is somebody else's problem now.",
+      "You couldn't cover the crew camp pitch fee.",
+      "Security (other security) escorts you off site. Your tent is 'repurposed' as a lost property store.",
+      'You hitch home on a lorry full of portaloos. It is exactly as bad as it sounds.',
     ],
   },
-  alone: {
-    title: 'ALONE',
+  collapsed: {
+    title: 'SENT HOME',
     good: false,
-    text: ['The flat is very quiet now.', 'You still work the gate. Checking other people\'s bags is easier than looking at the empty chairs at home.'],
+    text: [
+      'Two days without a proper meal. Halfway through a bag search you keel over into a box of sausage rolls.',
+      'The festival medic says you are "severely under-burgered" and sends you home.',
+      "Kettle sends a card. It says 'EAT SOMETHING'.",
+    ],
+  },
+  quit: {
+    title: 'I QUIT',
+    good: false,
+    text: [
+      'At 12:01 you take off your hi-vis, fold it neatly, and place it on the desk.',
+      '"I\'m going to go and watch a band," you tell Kettle. You do. It\'s brilliant.',
+      'Nan says she is proud of you anyway. The hip can wait.',
+    ],
   },
   arrested: {
     title: 'ARRESTED',
     good: false,
     text: [
-      "Graham Hollis was as good as his word. Police were waiting at the flat the next morning.",
+      'Graham Hollis was as good as his word. The police were waiting at crew camp the next morning.',
       '"Accepting payments from attendees." The cash is logged as evidence. So is your hi-vis.',
       'You never see the end of the summer from behind the fence. Just from behind a different one.',
     ],
@@ -245,7 +298,7 @@ const ENDINGS: Record<EndingId, { title: string; good: boolean; text: string[] }
     text: [
       "Halfway through VEX's set, a huge green banner unrolled from the lighting rig: GREYWATER BELONGS TO US.",
       'Forty thousand people sang it. The footage went round the world by morning.',
-      "Within a month, MegaVibe withdrew the planning application. A community trust bought the fields for £1.",
+      'Within a month, MegaVibe withdrew the planning application. A community trust bought the fields for £1.',
       'They offered you a job for life. Head of Gate 3. You said yes.',
     ],
   },
@@ -278,14 +331,15 @@ export function endingScreen(id: EndingId, g: GameState, onTitle: () => void): H
   const e = ENDINGS[id];
   const el = h('div', `screen ending ${e.good ? 'good' : 'bad'}`);
   const epi: string[] = [];
-  if (id !== 'evicted' && id !== 'arrested') {
-    for (const m of g.family) {
-      if (m.id === 'nan') epi.push(m.gone ? 'Nan never came home from the hospital.' : 'Nan goes to bingo with Edna every Thursday.');
-      if (m.id === 'theo') epi.push(m.gone ? 'Theo writes to you sometimes. Short letters.' : 'Theo wants to be a steward when he grows up. You tell him to aim higher.');
-      if (m.id === 'biscuit') epi.push(m.gone ? 'You see Biscuit in next door\'s garden. He still wags at you.' : 'Biscuit is fat and happy.');
-    }
+  if (e.good) {
+    epi.push(
+      g.money >= GOAL
+        ? "You pay for Nan's new hip in full. She sends a video of herself doing the Macarena at bingo."
+        : `You're £${GOAL - g.money} short of Nan's hip fund. She says not to worry. You worry.`,
+    );
     if (g.flags.dazzaThanked) epi.push("Dazza sends a postcard from another festival: 'GOT IN. REAL TICKET. THINKING OF YOU BOSS.'");
     if (g.flags.miloInside === false) epi.push("Milo's mum sends a thank-you card, with a drawing of a dinosaur in hi-vis.");
+    if (g.camp.owned.includes('lights')) epi.push('You keep the fairy lights. They go up in Nan\'s front window every summer.');
   }
   const acc = g.stats.processed ? Math.round((g.stats.correct / g.stats.processed) * 100) : 0;
   el.innerHTML = `
@@ -295,7 +349,7 @@ export function endingScreen(id: EndingId, g: GameState, onTitle: () => void): H
       ${epi.length ? `<div class="epi">${epi.map((t) => `<p>${esc(t)}</p>`).join('')}</div>` : ''}
       <div class="end-stats">
         <span>Days worked: ${g.day + 1}</span><span>Processed: ${g.stats.processed}</span><span>Accuracy: ${acc}%</span>
-        <span>Detained: ${g.stats.detained}</span><span>Items binned: ${g.stats.confiscated}</span><span>Savings: £${g.money}</span>
+        <span>Police called: ${g.stats.detained}</span><span>Items binned: ${g.stats.confiscated}</span><span>Savings: £${g.money}</span>
       </div>
       <button class="btn btn-big">BACK TO TITLE</button>
     </div>`;

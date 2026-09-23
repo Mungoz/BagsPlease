@@ -33,6 +33,11 @@ const FACES = {
   vex: F({ skin: 6, hair: 11, hairStyle: 11, headW: 9, headH: 11, jaw: 1, eyeColor: 4, brow: 0, nose: 0, mouth: 0, shades: 1, hat: 2, hatColor: 1, earring: true, shirt: 2, shirtStyle: 1 }),
   josh: F({ skin: 1, hair: 3, hairStyle: 2, headW: 8, headH: 10, eyeColor: 1, mouth: 3, shirt: 1, shirtStyle: 3 }),
   joshBrother: F({ skin: 1, hair: 2, hairStyle: 3, headW: 9, headH: 12, jaw: 1, eyeColor: 1, nose: 1, mouth: 0, beard: 1, shirt: 1 }),
+  moonbeam: F({ skin: 0, hair: 3, hairStyle: 10, headW: 8, headH: 12, jaw: 2, eyeColor: 2, mouth: 1, hat: 4, paint: 3, earring: true, nosering: true, shirt: 6, shirtStyle: 1 }),
+  brian: F({ skin: 1, hair: 6, hairStyle: 4, headW: 10, headH: 11, eyeColor: 1, mouth: 1, beard: 3, glasses: 1, shirt: 5, shirtStyle: 1 }),
+  nigel: F({ skin: 0, hair: 0, hairStyle: 4, headW: 9, headH: 12, jaw: 2, eyeColor: 3, brow: 2, mouth: 2, paint: 2, glasses: 1, shirt: 2, shirtStyle: 3 }),
+  gary: F({ skin: 2, hair: 2, hairStyle: 1, headW: 10, headH: 11, jaw: 1, eyeColor: 1, mouth: 3, shades: 1, shirt: 3, shirtStyle: 2 }),
+  poppy: F({ skin: 3, hair: 5, hairStyle: 5, headW: 8, headH: 10, eyeColor: 0, mouth: 3, freckles: true, shirt: 9, shirtStyle: 0 }),
 };
 
 function person(c: GenCtx, first: string, last: string, age: number, face: FaceParams, pres: 'm' | 'f' | 'x' = 'm'): Attendee {
@@ -344,7 +349,7 @@ export const SCRIPTS: Record<number, Script[]> = {
       at: 5,
       make: (c) => {
         const a = person(c, 'Victor', 'Crane', 62, FACES.crane);
-        const irn = EVENTS[3];
+        const irn = EVENTS.find((e) => e.code === 'IRN')!;
         a.ticket = { ...a.ticket, event: irn.name, validFrom: irn.from, validTo: irn.to, number: ticketNumber(c.rng, irn.code), seal: irn.seal, type: 'WEEKEND' };
         a.bribe = 30;
         a.bag = [mkItem('wallet'), mkItem('cigarettes'), mkItem('lighter')];
@@ -375,6 +380,96 @@ export const SCRIPTS: Record<number, Script[]> = {
     },
   ],
   8: [
+    {
+      at: 1,
+      make: (c) => {
+        const a = person(c, 'Darren', 'Pike', 31, { ...FACES.dazza, hat: 4, paint: 3 });
+        a.bag = [
+          mkItem('sausageRoll', { name: "Sausage roll ('it's vegan, trust me') - it is pork" }),
+          mkItem('sausageRoll', { name: "Sausage roll ('also vegan') - still pork" }),
+          mkItem('veganRoll'),
+          mkItem('crystal'),
+          mkItem('water'),
+        ];
+        a.lines = {
+          greet: ["Boss! I've got into wellness. I'm a whole new Dazza.", 'Brought me own vegan sausage rolls. Totally vegan. Trust me.'],
+          confiscate: "They're vegan in SPIRIT, boss!",
+          admit: 'Namaste, boss. Nama-STAY cool.',
+          deny: 'My chakras are well upset now.',
+        };
+        return a;
+      },
+    },
+    {
+      at: 4,
+      make: (c) => {
+        const a = person(c, 'Moonbeam', 'Harrington-Smythe', 46, FACES.moonbeam, 'f');
+        a.bag = [mkItem('crystal'), mkItem('crystal'), mkItem('incense'), mkItem('hotdog', { name: 'Hot dog ("ethically sourced")' }), mkItem('tofuBurger')];
+        a.lines = {
+          greet: ['Namaste. I am Moonbeam. Formerly Susan.', "I'm actually one of the organisers. Well, I donated a gong."],
+          confiscate: 'That hot dog was ethically sourced. From a garage.',
+          admit: 'Your third eye is ever so lovely.',
+          deny: "I shall be telling the gong about this.",
+        };
+        return a;
+      },
+    },
+    {
+      at: 7,
+      make: (c) => {
+        const a = person(c, 'Sid', 'Harlow', 34, { ...FACES.sid, hat: 4 });
+        a.bag = [mkItem('weed', { name: "Bag of 'herbal tea' (it is not tea)" }), mkItem('crystal'), mkItem('phone')];
+        a.lines = {
+          greet: ["I've found inner peace, steward. And some... herbal tea.", "Very relaxing tea. You smoke it. I mean brew it."],
+          detain: "This is a very un-zen way to treat a person!",
+          deny: 'Bad vibes, man. Bad vibes.',
+          admit: 'Om.',
+        };
+        return a;
+      },
+    },
+  ],
+  9: [
+    {
+      at: 2,
+      make: (c) => {
+        const a = person(c, 'Edna', 'Bramley', 78, FACES.edna, 'f');
+        a.bag = [mkItem('knitting'), mkItem('candle'), mkItem('crystal'), mkItem('tofuBurger')];
+        a.lines = {
+          greet: ["I've taken up yoga, dear! Well. Chair yoga. Well. Sitting.", "The candle's for my meditation. Lavender. Very calming."],
+          confiscate: 'Oh. I suppose I shall have to be calm on my own.',
+          admit: 'Namaste, dear. Is that right? Namaste.',
+          deny: "Well! That's very un-spiritual of you.",
+        };
+        return a;
+      },
+    },
+    {
+      at: 5,
+      make: (c) => {
+        const a = person(c, 'Brian', 'Gong', 58, FACES.brian);
+        a.bag = [mkItem('lantern'), mkItem('lantern'), mkItem('incense'), mkItem('sandwich')];
+        a.lines = {
+          greet: ['I am here to release forty sky lanterns for world peace.', 'Well, two. The rest are in the car.'],
+          confiscate: 'World peace will have to wait, then.',
+          admit: 'Peace be with you. And your bin.',
+          deny: "I'll do world peace from the car park.",
+        };
+        return a;
+      },
+    },
+    {
+      at: 7,
+      when: ff,
+      make: (c) => {
+        const a = person(c, 'Kit', 'Lamb', 25, { ...FACES.rowan, hair: 8, feather: false }, 'x');
+        a.bag = [mkItem('candle'), mkItem('candle'), mkItem('candle'), mkItem('water')];
+        a.lines = { greet: ["We're holding a candlelit vigil for the field tonight.", '(A green feather is tucked behind their ear.)'], admit: 'For Greywater.', deny: 'The field will remember.', confiscate: "We'll light our phones instead, then." };
+        return feather(c, a);
+      },
+    },
+  ],
+  10: [
     {
       at: 1,
       make: (c) => {
@@ -438,7 +533,7 @@ export const SCRIPTS: Record<number, Script[]> = {
       },
     },
   ],
-  9: [
+  11: [
     {
       at: 1,
       make: (c) => {
@@ -490,7 +585,130 @@ export const SCRIPTS: Record<number, Script[]> = {
       },
     },
   ],
-  10: [
+  12: [
+    {
+      at: 1,
+      make: (c) => {
+        const a = person(c, 'Nigel', 'Pratt', 44, FACES.nigel);
+        a.ticket.name = 'Lord Vexmoor the Defiler';
+        a.bag = [mkItem('earplugs'), mkItem('sandwich'), mkItem('poncho')];
+        a.lines = {
+          greet: ['I am LORD VEXMOOR THE DEFILER.', '...My mum made me a packed lunch.'],
+          deny: 'The realm of shadows will hear of this! ...I\'ll ring my mum.',
+          admit: 'DARKNESS ETERNAL! Cheers, pal.',
+          excuses: { name: "Nigel Pratt is my name in the mortal realm. In the realm of shadows it's Vexmoor." },
+        };
+        return a;
+      },
+    },
+    {
+      at: 4,
+      make: (c) => {
+        const a = person(c, 'Kaylee', 'Glow', 23, { ...FACES.kaylee, shades: 0 }, 'f');
+        a.bag = [mkItem('phone'), mkItem('powerbank'), mkItem('selfie'), mkItem('poncho')];
+        a.lines = {
+          greet: ["Hiii! I actually BOUGHT a ticket this time?", "I'm doing a mud-fluencer collab. Mud is so in right now."],
+          confiscate: 'My selfie stick! How will I do the unboxing? Of the MUD?',
+          admit: "Omg thank you! I'm tagging you as 'gate guy'.",
+          deny: "I literally paid for once. This is literally trauma.",
+        };
+        return a;
+      },
+    },
+    {
+      at: 6,
+      when: ff,
+      make: (c) => {
+        const a = person(c, 'Ewan', 'Fraser', 30, { ...FACES.josh, hair: 10, hairStyle: 4, beard: 3, shirt: 2 });
+        a.bag = [mkItem('flare'), mkItem('water'), mkItem('map')];
+        a.lines = { greet: ["Something for Summer's End.", '(A green feather is tucked into his hair.)'], admit: 'You will see it from space.', deny: 'We will find another way.' };
+        return feather(c, a);
+      },
+    },
+  ],
+  13: [
+    {
+      at: 1,
+      make: (c) => {
+        const a = person(c, 'Gary', 'Holmes', 38, FACES.gary);
+        a.bag = [mkItem('blaster'), mkItem('foamSword'), mkItem('wings'), mkItem('crisps')];
+        a.lines = {
+          greet: ['I am CAPTAIN GALAXY, defender of the Andromeda Sector.', 'Also Gary. From Swindon.'],
+          confiscate: "Without my blaster I'm just Gary.",
+          admit: 'To infinity! And the burger van!',
+          deny: 'The Andromeda Sector is DOOMED.',
+        };
+        return a;
+      },
+    },
+    {
+      at: 4,
+      make: (c) => {
+        const a = person(c, 'Darren', 'Pike', 31, { ...FACES.dazza, hat: 3, hatColor: 3, hair: 7, beard: 3 });
+        a.bag = [mkItem('wand'), mkItem('katana', { name: 'Replica sword "Dazzlesting" (metal)' }), mkItem('crisps')];
+        a.lines = {
+          greet: ["I have come as DAZZALF THE GREY.", 'You shall not... hang on, is my ticket alright?'],
+          confiscate: 'Dazzalf needs his sword! ...Fine. The wand is more powerful anyway.',
+          admit: 'A wizard is never late. He arrives precisely when his mates have got the drinks in.',
+          deny: 'YOU SHALL NOT... oh. I shall not pass.',
+        };
+        return a;
+      },
+    },
+    {
+      at: 7,
+      make: (c) => {
+        const a = person(c, 'Poppy', 'Gallagher', 10, FACES.poppy, 'f');
+        a.bag = [mkItem('foamSword'), mkItem('sandwich'), mkItem('water')];
+        a.lines = {
+          greet: ["I'm SIR POPPY and I'm TEN and this is my SWORD.", "It's foam. Mum said."],
+          admit: 'FOR GREYWATER!',
+          deny: 'That is NOT very knightly of you.',
+        };
+        return a;
+      },
+    },
+  ],
+  14: [
+    {
+      at: 2,
+      make: (c) => {
+        const a = person(c, 'Edna', 'Bramley', 78, { ...FACES.edna, hat: 3, hatColor: 1 }, 'f');
+        a.bag = [mkItem('wand'), mkItem('knitting'), mkItem('candle'), mkItem('sandwich')];
+        a.lines = {
+          greet: ["I've come as a witch, dear. My grandson says it's 'iconic'.", "I've been one for years, really. Ask your Nan."],
+          admit: 'Hubble bubble, dear. Mind how you go.',
+          deny: 'I shall turn you into a toad. ...Only joking. Mostly.',
+        };
+        return a;
+      },
+    },
+    {
+      at: 5,
+      when: ff,
+      make: (c) => {
+        const a = person(c, 'Freya', 'Quinn', 26, { ...FACES.kaylee, skin: 3, hair: 10, shades: 0, paint: 0, shirt: 4 }, 'f');
+        a.bag = [mkItem('katana'), mkItem('wings'), mkItem('water')];
+        a.lines = { greet: ["Props for Summer's End. Theatrical purposes.", '(A green feather is tucked behind her ear.)'], admit: 'See you at the finale.', deny: 'Pity.', confiscate: 'We have more.' };
+        return feather(c, a);
+      },
+    },
+    {
+      at: 8,
+      make: (c) => {
+        const a = person(c, 'Julian', 'Marsh-Hale', 48, FACES.julian);
+        a.bag = [mkItem('blaster'), mkItem('phone'), mkItem('wallet')];
+        a.lines = {
+          greet: ["I've come as a villain. A property developer.", 'Nobody has got it yet. I really am one.'],
+          confiscate: 'Fine. I have lawyers. They are much more dangerous.',
+          admit: 'See you at the finale. Enjoy the field while it lasts.',
+          deny: 'This is harassment of a costumed individual.',
+        };
+        return a;
+      },
+    },
+  ],
+  15: [
     {
       at: 1,
       make: (c) => {

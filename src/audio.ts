@@ -138,6 +138,18 @@ export const sfx = {
   pat() {
     for (let i = 0; i < 4; i++) noise(0.05, 0.2, 'lowpass', 500, i * 0.12);
   },
+  siren() {
+    for (let i = 0; i < 4; i++) {
+      tone(740, 0.22, 'triangle', 0.13, i * 0.44, 880);
+      tone(880, 0.22, 'triangle', 0.13, i * 0.44 + 0.22, 740);
+    }
+  },
+  zip() {
+    for (let i = 0; i < 7; i++) noise(0.025, 0.14, 'bandpass', 2200 + i * 250, i * 0.028, 4);
+  },
+  rustle() {
+    noise(0.15, 0.1, 'bandpass', 1800, 0, 0.6);
+  },
   jingle() {
     [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, 'square', 0.08, i * 0.12));
   },
@@ -154,8 +166,8 @@ let beatN = 0;
 let genre: Genre = 'rock';
 let beatListeners: (() => void)[] = [];
 
-const BPM: Record<Genre, number> = { rock: 116, edm: 128, folk: 96, metal: 170, finale: 124 };
-const ROOT: Record<Genre, number> = { rock: 82, edm: 55, folk: 98, metal: 73, finale: 65 };
+const BPM: Record<Genre, number> = { rock: 116, edm: 128, folk: 96, metal: 170, finale: 124, wellness: 70, cosplay: 140 };
+const ROOT: Record<Genre, number> = { rock: 82, edm: 55, folk: 98, metal: 73, finale: 65, wellness: 110, cosplay: 98 };
 
 export function onBeat(fn: () => void) {
   beatListeners.push(fn);
@@ -214,7 +226,7 @@ function scheduleBeat(c: AudioContext, out: AudioNode, t: number, n: number, spb
   const bass = (at: number, f: number, d: number) => {
     const o = c.createOscillator();
     const g = c.createGain();
-    o.type = genre === 'folk' ? 'triangle' : 'sawtooth';
+    o.type = genre === 'folk' || genre === 'wellness' ? 'triangle' : 'sawtooth';
     o.frequency.value = f;
     env(g, at, 0.01, 0.25, d);
     o.connect(g).connect(out);
@@ -226,6 +238,7 @@ function scheduleBeat(c: AudioContext, out: AudioNode, t: number, n: number, spb
   const f = root * prog[Math.floor(n / 8) % prog.length];
   switch (genre) {
     case 'edm':
+    case 'cosplay':
     case 'finale':
       kick(t);
       bass(t + spb / 2, f, spb / 2.2);
@@ -241,6 +254,7 @@ function scheduleBeat(c: AudioContext, out: AudioNode, t: number, n: number, spb
       bass(t + spb / 2, f, spb * 0.45);
       break;
     case 'folk':
+    case 'wellness':
       if (n % 4 === 0) kick(t, 0.4);
       bass(t, n % 2 ? f * 1.5 : f, spb * 0.8);
       break;

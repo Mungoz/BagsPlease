@@ -2,12 +2,13 @@ import '@fontsource/vt323';
 import '@fontsource/press-start-2p';
 import './style.css';
 import { toggleMute, unlockAudio } from './audio';
+import { autoFullscreenOnFirstTap, canFullscreen, enterFullscreen } from './fullscreen';
 import { fmtShort } from './dates';
 import { DAYS, endlessDay } from './data/days';
-import { clearSave, getPref, load, newGame, save, setPref } from './state';
+import { applyNight, clearSave, getPref, load, newGame, save, setPref, type NightChoice } from './state';
 import type { GameState } from './types';
 import {
-  briefingScreen, endingScreen, endlessScore, endlessScreen, newsScreen, nightNews, pickEnding, summaryScreen, titleScreen, type EndingId,
+  briefingScreen, campScreen, endingScreen, endlessScore, endlessScreen, newsScreen, pickEnding, titleScreen, type EndingId,
 } from './ui/screens';
 import { Shift } from './ui/shift';
 import * as judge from './judge';
@@ -27,7 +28,16 @@ function fit() {
   game.style.transform = `translate(-50%, -50%) scale(${s})`;
 }
 window.addEventListener('resize', fit);
+document.addEventListener('fullscreenchange', fit);
 fit();
+
+autoFullscreenOnFirstTap();
+// The portrait "turn sideways" screen doubles as a tap-to-go-fullscreen button.
+const rotate = document.getElementById('rotate')!;
+if (canFullscreen()) {
+  rotate.innerHTML += '<small>(tap to go fullscreen)</small>';
+  rotate.addEventListener('click', () => void enterFullscreen());
+}
 
 window.addEventListener('pointerdown', unlockAudio, { once: false });
 // Buttons keep focus after a click, which would make Space/Enter re-trigger them.
@@ -38,7 +48,7 @@ window.addEventListener('keydown', (e) => {
 
 function title() {
   const saved = load();
-  const label = saved ? `Day ${saved.day + 1} - ${fmtShort(DAYS[saved.day].date)}` : null;
+  const label = saved ? `Day ${saved.day + 1} - ${fmtShort(DAYS[saved.day].date)}${saved.pending ? ', evening' : ''}` : null;
   const t = titleScreen(
     label,
     bestEndless(),
@@ -48,7 +58,12 @@ function title() {
       save(g);
       briefing(g);
     },
-    () => briefing(load()!),
+    () => {
+      const g = load()!;
+      // Closed the game on the crew camp screen? Pick up right there.
+      if (g.pending) camp(g);
+      else briefing(g);
+    },
     endless,
   );
   show(t.el, t.destroy);
@@ -82,19 +97,30 @@ function shift(g: GameState) {
   const s = new Shift(
     work,
     DAYS[work.day],
-    (r) => show(summaryScreen(work, r, (bills) => night(work, bills))),
+    (r) => {
+      work.pending = r;
+      save(work);
+      camp(work);
+    },
     () => title(),
   );
   show(s.root, () => s.destroy());
   s.start();
 }
 
-function night(g: GameState, bills: Parameters<typeof nightNews>[1]) {
-  if (g.money < 0) return ending('evicted', g);
-  const news = nightNews(g, bills);
+function camp(g: GameState) {
+  show(campScreen(g, g.pending!, (choice) => night(g, choice)));
+}
+
+function night(g: GameState, choice: NightChoice) {
+  const r = g.pending!;
+  delete g.pending;
+  if (g.money < 0) return ending('skint', g);
+  const news = applyNight(g, choice, DAYS[g.day].event.genre, r.citations.length, Math.random);
   const after = () => {
     if (g.flags.arrested) return ending('arrested', g);
-    if (g.family.every((m) => m.gone)) return ending('alone', g);
+    if (g.camp.starving >= 2) return ending('collapsed', g);
+    if (g.camp.miserable >= 2) return ending('quit', g);
     if (g.day >= DAYS.length - 1) return ending(pickEnding(g), g);
     g.day++;
     save(g);

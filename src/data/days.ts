@@ -1,7 +1,7 @@
 import { mkDate, type DayNum } from '../dates';
 import type { RuleId } from '../types';
 
-export type Genre = 'rock' | 'edm' | 'folk' | 'metal' | 'finale';
+export type Genre = 'rock' | 'edm' | 'folk' | 'metal' | 'finale' | 'wellness' | 'cosplay';
 
 export interface EventDef {
   name: string;
@@ -64,6 +64,17 @@ const FFF: EventDef = {
   color: '#3a9a4a',
   tagline: 'Fiddles, face paint & fun for all ages',
 };
+const GVW: EventDef = {
+  name: 'GOOD VIBES WELLNESS RETREAT',
+  code: 'GVW',
+  from: mkDate(2026, 7, 18),
+  to: mkDate(2026, 7, 19),
+  seal: 'PURPLE',
+  sealHex: '#b060e0',
+  genre: 'wellness',
+  color: '#8a5ac8',
+  tagline: 'Gongs, crystals and absolutely no meat',
+};
 const IRN: EventDef = {
   name: 'IRONCLAD METAL FEST',
   code: 'IRN',
@@ -74,6 +85,17 @@ const IRN: EventDef = {
   genre: 'metal',
   color: '#8a1a1a',
   tagline: 'Heavier than the rain',
+};
+const FCC: EventDef = {
+  name: 'FIELDCON COMIC & COSPLAY',
+  code: 'FCC',
+  from: mkDate(2026, 8, 15),
+  to: mkDate(2026, 8, 16),
+  seal: 'PINK',
+  sealHex: '#ff70c0',
+  genre: 'cosplay',
+  color: '#d83a8a',
+  tagline: 'Capes, cardboard armour and questionable wigs',
 };
 const SEF: EventDef = {
   name: "SUMMER'S END",
@@ -87,18 +109,23 @@ const SEF: EventDef = {
   tagline: 'MegaVibe presents the season finale',
 };
 
-export const EVENTS = [RBR, BSL, FFF, IRN, SEF];
+export const EVENTS = [RBR, BSL, FFF, GVW, IRN, FCC, SEF];
+
+const without = (rs: RuleId[], ...drop: RuleId[]) => rs.filter((r) => !drop.includes(r));
 
 const R1: RuleId[] = ['ticket_valid'];
-const R2: RuleId[] = [...R1, 'bag_weapons', 'bag_glass'];
+const R2: RuleId[] = [...R1, 'bag_weapons', 'bag_glass', 'bag_drugs'];
 const R3: RuleId[] = [...R2, 'id_required', 'age_18'];
-const R4: RuleId[] = [...R3, 'bag_drugs', 'bag_aerosol', 'medication'];
-const R5: RuleId[] = [...R4, 'detain', 'bag_unsealed'];
-const R6: RuleId[] = [...R5.filter((r) => r !== 'age_18'), 'consent', 'bag_alcohol', 'bag_gadgets'];
+const R4: RuleId[] = [...R3, 'bag_aerosol', 'medication', 'detain'];
+const R5: RuleId[] = [...R4, 'bag_unsealed'];
+const R6: RuleId[] = [...without(R5, 'age_18'), 'consent', 'bag_alcohol', 'bag_gadgets'];
 const R7: RuleId[] = [...R6, 'camping'];
-const R8: RuleId[] = [...R7.filter((r) => r !== 'consent'), 'age_18', 'k9', 'bag_pyro', 'bag_spikes'];
-const R9: RuleId[] = [...R8, 'seal', 'ticket_code'];
-const R10: RuleId[] = [...R9, 'guestlist'];
+const R8: RuleId[] = [...R7, 'vegan'];
+const R9: RuleId[] = [...R8, 'flames'];
+const R10: RuleId[] = [...without(R9, 'consent', 'vegan', 'flames'), 'age_18', 'k9', 'bag_pyro', 'bag_spikes'];
+const R11: RuleId[] = [...R10, 'seal', 'ticket_code'];
+const R13: RuleId[] = [...without(R11, 'age_18'), 'consent', 'replicas'];
+const R15: RuleId[] = [...R11, 'guestlist'];
 
 export const DAYS: DayDef[] = [
   {
@@ -113,14 +140,14 @@ export const DAYS: DayDef[] = [
       'You are paid £5 for every attendee you process. Mistakes earn citations. Two warnings a day, then they cost you.',
     ],
     headlines: [
-      { title: 'GREYWATER FIELDS OPENS SUMMER SEASON', body: 'Five festivals, one field, one very long summer.' },
+      { title: 'GREYWATER FIELDS OPENS SUMMER SEASON', body: 'Seven festivals, one field, one very long summer.' },
       { title: 'MegaVibe completes purchase of site', body: "Entertainment giant calls the historic fields 'a blank canvas'." },
-      { title: 'Local pensioner wins marrow contest', body: 'For the eleventh year running.' },
+      { title: 'Local pensioner wins marrow contest', body: 'For the eleventh year running. Rivals allege "marrow doping".' },
     ],
     errorRate: 0.35,
     doubleRate: 0,
-    seconds: 270,
-    rent: 20,
+    seconds: 90,
+    rent: 10,
     hints: [
       'Click the megaphone (NEXT!) to call the first person in the queue.',
       "Compare the ticket's EVENT and DATES with the TODAY page of your rulebook.",
@@ -133,23 +160,25 @@ export const DAYS: DayDef[] = [
     date: mkDate(2026, 6, 13),
     event: RBR,
     rules: R2,
-    newRules: ['bag_weapons', 'bag_glass'],
+    newRules: ['bag_weapons', 'bag_glass', 'bag_drugs'],
     memo: [
       'After a knife was found near the campsite last night, BAG CHECKS start today.',
-      'Weapons: DENY entry. Glass: drag the item into the AMNESTY BIN, then admit as normal.',
+      'Weapons and ILLEGAL DRUGS (pills, powders, cannabis, laughing gas): DENY entry. The police are on site and taking an interest.',
+      'Glass: drag the item into the AMNESTY BIN, then admit as normal.',
       'Do not confiscate things that are allowed. People get very upset about their sandwiches.',
     ],
     headlines: [
       { title: "RIVERBEND NIGHT ONE: 'LOUDEST YET'", body: 'Complaints received from three villages and one confused cow.' },
       { title: 'Knife found near campsite', body: 'Organisers promise tougher searches at the gate.' },
-      { title: 'Heatwave warning', body: 'Festival-goers urged to bring sun cream and water.' },
+      { title: 'Heatwave warning', body: 'Festival-goers urged to bring sun cream, water, and a sense of proportion.' },
     ],
     errorRate: 0.4,
     doubleRate: 0,
-    seconds: 300,
-    rent: 20,
+    seconds: 120,
+    rent: 10,
     hints: [
-      'Bags now open on your desk. Drag prohibited items into the AMNESTY BIN (bottom left).',
+      'Bags arrive ZIPPED. Click the zip to open, then drag clothes OUT of the bag - things hide underneath.',
+      'Check the side pocket too! Drag prohibited items into the AMNESTY BIN (bottom left).',
       'Hover over any item to see what it is. Click the bin to undo the last confiscation.',
     ],
   },
@@ -161,19 +190,19 @@ export const DAYS: DayDef[] = [
     newRules: ['id_required', 'age_18'],
     memo: [
       'Fake IDs have been flooding in. From today everyone must show PHOTO ID.',
-      'Only a DRIVING LICENCE or PASSPORT counts. Check the name matches the ticket, the ID is in date, and the photo is actually them.',
+      'Only a DRIVING LICENCE or PASSPORT counts. Name must match the ticket, ID in date, and the photo must actually be them.',
       'Over 18s only. Do the maths on the date of birth.',
       'TIP: use INSPECT mode (magnifier) to click two things that disagree and question the attendee.',
     ],
     headlines: [
       { title: 'FAKE ID CRACKDOWN', body: "'We've seen library cards, gym passes, even a Blockbuster card,' says steward." },
-      { title: 'Underage fans turned away', body: 'Teens caught using older siblings\' passports.' },
+      { title: 'Underage fans turned away', body: "Teens caught using older siblings' passports and 'very convincing' moustaches." },
       { title: 'Riverbend headliners play 3-hour set', body: 'Drummer requires medical attention, and a nap.' },
     ],
     errorRate: 0.45,
     doubleRate: 0.05,
-    seconds: 330,
-    rent: 20,
+    seconds: 150,
+    rent: 10,
     hints: [
       'Every attendee now hands over photo ID. Compare the photo with the face at your window.',
       'INSPECT mode: click the magnifier, then click two fields that disagree (e.g. ticket name and ID name).',
@@ -184,10 +213,10 @@ export const DAYS: DayDef[] = [
     date: mkDate(2026, 6, 27),
     event: BSL,
     rules: R4,
-    newRules: ['bag_drugs', 'bag_aerosol', 'medication'],
+    newRules: ['bag_aerosol', 'medication', 'detain'],
     memo: [
-      'BASSLINE ALL-DAYER. Police warn of dangerous pills in circulation.',
-      'ILLEGAL DRUGS: DENY. Check tins and packets - dealers get creative.',
+      'BASSLINE ALL-DAYER. The police have set up a unit right behind Gate 3.',
+      'From today, anyone carrying ILLEGAL DRUGS or WEAPONS: press CALL POLICE. Denying them is not enough. Good busts earn a police thank-you.',
       'AEROSOLS: confiscate. PRESCRIPTION PILLS: need a matching prescription note, otherwise confiscate the pills.',
     ],
     headlines: [
@@ -197,31 +226,31 @@ export const DAYS: DayDef[] = [
     ],
     errorRate: 0.45,
     doubleRate: 0.08,
-    seconds: 330,
-    rent: 20,
-    hints: ['Prescription pill bottles have a label. The prescription note must name the same medicine and the same person.'],
+    seconds: 180,
+    rent: 10,
+    hints: ['CALL POLICE is the blue button under your window: use it for drugs and weapons.', 'Prescription pill bottles have a label. The note must name the same medicine and the same person.'],
   },
   {
     n: 5,
     date: mkDate(2026, 6, 28),
     event: BSL,
     rules: R5,
-    newRules: ['detain', 'bag_unsealed'],
+    newRules: ['bag_unsealed'],
     memo: [
-      'Yesterday we let dealers walk away. Not today.',
-      'Anyone carrying ILLEGAL DRUGS or WEAPONS must be DETAINED with the red button. Denying them is not enough.',
-      'Water bottles must be factory sealed. Opened bottles go in the bin.',
+      'The police made nine arrests yesterday. The Chief Inspector sends his thanks, and a tin of Roses.',
+      'Water bottles must be factory sealed - people have been topping them up with vodka. Opened bottles go in the bin.',
+      'Drugs and weapons: still CALL POLICE.',
     ],
     headlines: [
-      { title: 'DEALERS SLIP THROUGH NET', body: "MegaVibe: 'Security will be tightened. Heads will roll.'" },
+      { title: 'NINE ARRESTED AT BASSLINE', body: "Police praise 'eagle-eyed' gate stewards. One dealer hid pills in a hollowed-out baguette." },
       { title: 'FreeFest collective claims billboard stunt', body: "'Greywater belongs to the people,' reads the graffiti." },
       { title: 'Bassline DJ plays 6 hours straight', body: 'Nobody noticed he had left after hour 2.' },
     ],
     errorRate: 0.5,
     doubleRate: 0.1,
-    seconds: 330,
-    rent: 20,
-    hints: ['The DETAIN button is under your window. Use it for anyone carrying drugs or weapons.'],
+    seconds: 195,
+    rent: 10,
+    hints: [],
   },
   {
     n: 6,
@@ -231,18 +260,18 @@ export const DAYS: DayDef[] = [
     newRules: ['consent', 'bag_alcohol', 'bag_gadgets'],
     memo: [
       'FOLK & FAMILY FAYRE. Children are welcome - the 18+ rule is SUSPENDED this weekend.',
-      "Under-18s must hand you a GUARDIAN CONSENT FORM with their name, dated today.",
+      'Under-18s must hand you a GUARDIAN CONSENT FORM with their name, dated today.',
       'The Fayre is alcohol-free and gadget-free: confiscate outside alcohol, laser pointers, selfie sticks and drones.',
     ],
     headlines: [
       { title: 'FAMILY FAYRE ROLLS INTO TOWN', body: 'Morris dancers vs. the heatwave: who will win?' },
       { title: 'MegaVibe exec visits site', body: "'Greywater has potential far beyond music,' says Julian Marsh-Hale." },
-      { title: 'Lost child reunited at last year\'s Fayre', body: 'Organisers remind parents to keep kids close.' },
+      { title: "Lost child reunited at last year's Fayre", body: 'Organisers remind parents to keep kids close.' },
     ],
     errorRate: 0.5,
     doubleRate: 0.1,
-    seconds: 330,
-    rent: 25,
+    seconds: 210,
+    rent: 10,
     hints: ['Kids need a Guardian Consent Form. The age rule is off for this event - check the TODAY page.'],
   },
   {
@@ -257,24 +286,68 @@ export const DAYS: DayDef[] = [
     ],
     headlines: [
       { title: 'CAMPSITE BURSTING AT THE SEAMS', body: 'Day-trippers caught smuggling chairs into the arena.' },
-      { title: 'Rents rise across the borough', body: 'Landlords blame "the festival effect".' },
+      { title: 'Rents rise across the borough', body: 'Landlords blame "the festival effect". And "the economy". And "you".' },
       { title: 'FreeFest: "The summer is ours"', body: 'Leaflets found in every tent on the Fayre campsite.' },
     ],
     errorRate: 0.5,
     doubleRate: 0.12,
-    seconds: 330,
-    rent: 25,
+    seconds: 225,
+    rent: 10,
     hints: [],
   },
   {
     n: 8,
+    date: mkDate(2026, 7, 18),
+    event: GVW,
+    rules: R8,
+    newRules: ['vegan'],
+    memo: [
+      'GOOD VIBES WELLNESS RETREAT. Consent-form rules from the Fayre still apply - families welcome.',
+      'The organisers have made the event STRICTLY PLANT-BASED. Meat goes in the bin. Vegan versions are fine - read the label.',
+      'If anyone offers you a crystal to "cleanse your gate energy", politely decline.',
+    ],
+    headlines: [
+      { title: 'WELLNESS RETREAT COMES TO GREYWATER', body: 'Goat yoga, gong baths, and a £14 turmeric latte.' },
+      { title: 'Sausage roll smuggling ring suspected', body: '"They hide them in yoga mats," claims organiser Moonbeam.' },
+      { title: 'Local Greggs reports record sales', body: 'Manager: "They come in wearing robes. They leave with bakes."' },
+    ],
+    errorRate: 0.5,
+    doubleRate: 0.12,
+    seconds: 240,
+    rent: 15,
+    hints: ['Meat is banned today. The tooltips tell a sausage roll from a vegan "sausage" roll.'],
+  },
+  {
+    n: 9,
+    date: mkDate(2026, 7, 19),
+    event: GVW,
+    rules: R9,
+    newRules: ['flames'],
+    memo: [
+      'Last night somebody lit forty tea lights in a yurt "for the vibes". The yurt is gone.',
+      'Candles, incense and sky lanterns: CONFISCATE.',
+      'Everything else from yesterday still applies. Namaste, or whatever.',
+    ],
+    headlines: [
+      { title: 'YURT LOST TO "EXCESSIVE VIBES"', body: 'Fire crews praise attendees for "remaining very calm, almost too calm".' },
+      { title: 'Goat escapes yoga class', body: 'Last seen heading toward the car park doing downward dog.' },
+      { title: 'MegaVibe: "Wellness is the future"', body: 'Plans for a luxury spa on site "purely hypothetical".' },
+    ],
+    errorRate: 0.55,
+    doubleRate: 0.14,
+    seconds: 250,
+    rent: 15,
+    hints: [],
+  },
+  {
+    n: 10,
     date: mkDate(2026, 7, 31),
     event: IRN,
-    rules: R8,
+    rules: R10,
     newRules: ['age_18', 'k9', 'bag_pyro', 'bag_spikes'],
     memo: [
-      'IRONCLAD METAL FEST. 18+ again. Consent forms mean nothing this weekend.',
-      "Meet SERGEANT, our sniffer dog. If he SITS, PAT-DOWN the attendee before you decide.",
+      'IRONCLAD METAL FEST. 18+ again. Consent forms mean nothing this weekend. Meat is allowed again. Loudly.',
+      'Meet SERGEANT, our sniffer dog. If he SITS, PAT-DOWN the attendee before you decide.',
       'Flares and fireworks: DENY. Spiked jewellery and heavy chains: confiscate.',
     ],
     headlines: [
@@ -284,15 +357,15 @@ export const DAYS: DayDef[] = [
     ],
     errorRate: 0.55,
     doubleRate: 0.15,
-    seconds: 360,
-    rent: 25,
+    seconds: 260,
+    rent: 15,
     hints: ['Watch the dog next to your booth. If Sergeant sits, press PAT-DOWN before deciding.'],
   },
   {
-    n: 9,
+    n: 11,
     date: mkDate(2026, 8, 1),
     event: IRN,
-    rules: R9,
+    rules: R11,
     newRules: ['seal', 'ticket_code'],
     memo: [
       'Counterfeit tickets seized in town. Check EVERY ticket carefully.',
@@ -306,20 +379,81 @@ export const DAYS: DayDef[] = [
     ],
     errorRate: 0.55,
     doubleRate: 0.18,
-    seconds: 360,
-    rent: 25,
+    seconds: 270,
+    rent: 15,
     hints: [],
   },
   {
-    n: 10,
+    n: 12,
+    date: mkDate(2026, 8, 2),
+    event: IRN,
+    rules: R11,
+    newRules: [],
+    memo: [
+      "Ironclad's final day. No new rules - just more of everything.",
+      'The rain has turned the queue into a swamp. People will be grumpy. So will you. Stay sharp.',
+    ],
+    headlines: [
+      { title: 'IRONCLAD: MUD, GLORIOUS MUD', body: 'One fan "fully submerged" during circle pit. Recovered, delighted.' },
+      { title: 'Sergeant the dog named Employee of the Month', body: 'Refuses to share the reward biscuit.' },
+      { title: 'Metal band apologises to village', body: '"We did not know the church bells were that close," says frontman Skullgrinder (Gary).' },
+    ],
+    errorRate: 0.6,
+    doubleRate: 0.2,
+    seconds: 280,
+    rent: 15,
+    hints: [],
+  },
+  {
+    n: 13,
+    date: mkDate(2026, 8, 15),
+    event: FCC,
+    rules: R13,
+    newRules: ['consent', 'replicas'],
+    memo: [
+      'FIELDCON COMIC & COSPLAY. All ages again - consent forms are BACK for under-18s.',
+      'REPLICA WEAPONS: metal swords and realistic guns get confiscated. Foam swords, wands and bright plastic water pistols are fine.',
+      "Real knives are still real knives. Yes, even if he says he's a pirate.",
+    ],
+    headlines: [
+      { title: 'CAPES AND CHAOS AT FIELDCON', body: 'Organisers expect 12,000 attendees, 3,000 of them wizards.' },
+      { title: 'Man in full armour stuck in portaloo', body: 'Freed after 40 minutes. "Worth it," he says.' },
+      { title: 'MegaVibe announces "Greywater Quarter"', body: 'Artist impressions show a car park where the main stage is.' },
+    ],
+    errorRate: 0.55,
+    doubleRate: 0.18,
+    seconds: 290,
+    rent: 15,
+    hints: ['Cosplay props: foam is fine, metal is not. Hover items to check.'],
+  },
+  {
+    n: 14,
+    date: mkDate(2026, 8, 16),
+    event: FCC,
+    rules: R13,
+    newRules: [],
+    memo: ['FieldCon day two. Same rules as yesterday.', 'Several attendees are dressed as security guards. Please do not let them "help".'],
+    headlines: [
+      { title: 'FIELDCON DAY ONE "A TRIUMPH"', body: 'Lost property now contains 31 swords, 12 capes and one horse (costume).' },
+      { title: 'Cosplayer mistaken for real knight', body: 'Asked to open village fete. Accepted.' },
+      { title: 'FreeFest: "One more festival"', body: "Graffiti on MegaVibe billboard reads SEE YOU AT SUMMER'S END." },
+    ],
+    errorRate: 0.6,
+    doubleRate: 0.2,
+    seconds: 300,
+    rent: 15,
+    hints: [],
+  },
+  {
+    n: 15,
     date: mkDate(2026, 8, 29),
     event: SEF,
-    rules: R10,
+    rules: R15,
     newRules: ['guestlist'],
     memo: [
       "SUMMER'S END. MegaVibe's showcase. Everything must be perfect.",
       'Artists and crew arrive with PASSES instead of tickets. Their name must be on the GUEST LIST and match their photo ID.',
-      'All previous rules apply. Good luck. You will need it.',
+      'Standard rules apply: 18+, K9, seals, the lot. Good luck. You will need it.',
     ],
     headlines: [
       { title: "SUMMER'S END: THE LAST FESTIVAL?", body: 'Planning application lodged for 400 luxury flats on Greywater Fields.' },
@@ -328,8 +462,8 @@ export const DAYS: DayDef[] = [
     ],
     errorRate: 0.55,
     doubleRate: 0.2,
-    seconds: 360,
-    rent: 25,
+    seconds: 320,
+    rent: 15,
     guestList: [
       { name: 'VEX', real: 'Kevin Budd', role: 'ARTIST' },
       { name: 'The Paper Lanterns', real: 'Ada Lloyd', role: 'ARTIST' },

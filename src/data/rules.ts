@@ -5,7 +5,7 @@ export interface RuleDef {
   id: RuleId;
   title: string;
   text: string;
-  action: 'DENY' | 'CONFISCATE' | 'DETAIN' | 'PAT-DOWN' | 'INFO';
+  action: 'DENY' | 'CONFISCATE' | 'POLICE' | 'PAT-DOWN' | 'INFO';
   /** Item group this rule bans, if any. */
   group?: ItemGroup;
 }
@@ -26,7 +26,13 @@ export const RULES: Record<RuleId, RuleDef> = {
     action: 'DENY',
   },
   age_18: { id: 'age_18', title: 'Over 18s only', text: 'Holder must be 18 or older today (check date of birth).', action: 'DENY' },
-  bag_drugs: { id: 'bag_drugs', title: 'Illegal drugs', text: 'Any illegal substance, however it is disguised.', action: 'DENY', group: 'drug' },
+  bag_drugs: {
+    id: 'bag_drugs',
+    title: 'Illegal drugs',
+    text: 'Pills, powders, cannabis, laughing gas - however it is disguised (mint tins, "herbal tea", side pockets...). Once the police unit arrives: CALL POLICE.',
+    action: 'DENY',
+    group: 'drug',
+  },
   bag_aerosol: { id: 'bag_aerosol', title: 'Aerosols', text: 'Spray cans: deodorant, hairspray, spray paint.', action: 'CONFISCATE', group: 'aerosol' },
   medication: {
     id: 'medication',
@@ -37,9 +43,9 @@ export const RULES: Record<RuleId, RuleDef> = {
   },
   detain: {
     id: 'detain',
-    title: 'Detain offenders',
-    text: 'Anyone carrying illegal drugs or weapons must be DETAINED (not just denied). Press the red DETAIN button.',
-    action: 'DETAIN',
+    title: 'Call the police',
+    text: 'Anyone carrying illegal drugs or weapons: press CALL POLICE. The police take it from there. Denying them is not enough - and wasting police time earns a citation.',
+    action: 'POLICE',
   },
   bag_unsealed: { id: 'bag_unsealed', title: 'Opened bottles', text: 'Plastic bottles must be factory sealed. Opened bottles are confiscated.', action: 'CONFISCATE', group: 'unsealed' },
   bag_alcohol: { id: 'bag_alcohol', title: 'Outside alcohol', text: 'Cans, flasks, boxed wine - all outside alcohol.', action: 'CONFISCATE', group: 'alcohol' },
@@ -83,6 +89,27 @@ export const RULES: Record<RuleId, RuleDef> = {
     text: 'Pass holders need no ticket, but must appear on the GUEST LIST and show matching photo ID.',
     action: 'DENY',
   },
+  vegan: {
+    id: 'vegan',
+    title: 'Meat-free event',
+    text: 'The retreat is strictly plant-based. Sausage rolls, burgers, hot dogs. Vegan and tofu versions are fine (read the label!).',
+    action: 'CONFISCATE',
+    group: 'meat',
+  },
+  flames: {
+    id: 'flames',
+    title: 'Naked flames',
+    text: 'Candles, incense and sky lanterns. The yurts are VERY flammable.',
+    action: 'CONFISCATE',
+    group: 'flame',
+  },
+  replicas: {
+    id: 'replicas',
+    title: 'Replica weapons',
+    text: 'Metal replica swords and realistic replica guns. Foam swords, wands and bright plastic water pistols are fine. Real knives are still DENY / CALL POLICE.',
+    action: 'CONFISCATE',
+    group: 'replica',
+  },
 };
 
 /** Maps an item group to the rule that bans it. */
@@ -98,4 +125,7 @@ export const GROUP_RULE: Partial<Record<ItemGroup, RuleId>> = {
   camping: 'camping',
   pyro: 'bag_pyro',
   spikes: 'bag_spikes',
+  meat: 'vegan',
+  flame: 'flames',
+  replica: 'replicas',
 };

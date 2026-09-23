@@ -30,6 +30,100 @@ export function itemSprite(id: string, size = 18): string {
   return url;
 }
 
+// Clothing that gets in the way when searching a bag. 'X' = cloth colour, 'x' = its shade.
+const CLOTHES: Record<string, string[]> = {
+  tshirt: [
+    '...kkkkk..kkkkk...',
+    '..kXXXXXkkXXXXXk..',
+    '.kXXXXXXXXXXXXXXk.',
+    'kXXXXXXXXXXXXXXXXk',
+    'kXXXkXXXXXXXXkXXXk',
+    '.kkk.kXXXXXXk.kkk.',
+    '.....kXXxxXXk.....',
+    '.....kXXxxXXk.....',
+    '.....kXXXXXXk.....',
+    '.....kXXXXXXk.....',
+    '.....kkkkkkkk.....',
+  ],
+  socks: [
+    '.kkkk.kkkk.',
+    'kXXXXkXXXXk',
+    'kxxxxkxxxxk',
+    'kXXXXkXXXXk',
+    'kXXXXkXXXXk',
+    'kXXXXkXXXXk',
+    'kXXXkkXXXXk',
+    'kXXXXkkXXXk',
+    '.kkkk..kkk.',
+  ],
+  towel: [
+    'kkkkkkkkkkkkkkkk',
+    'kXXXXXXXXXXXXXXk',
+    'kxxxxxxxxxxxxxxk',
+    'kXXXXXXXXXXXXXXk',
+    'kXXXXXXXXXXXXXXk',
+    'kxxxxxxxxxxxxxxk',
+    'kXXXXXXXXXXXXXXk',
+    'kkkkkkkkkkkkkkkk',
+  ],
+  hoodie: [
+    '.....kkkkkk.....',
+    '....kXXXXXXk....',
+    '..kkXXkkkkXXkk..',
+    '.kXXXXXkkXXXXXk.',
+    'kXXXXXXXXXXXXXXk',
+    'kXXkXXXXXXXXkXXk',
+    'kXXkXXxxxxXXkXXk',
+    'kXXkXXxxxxXXkXXk',
+    'kkkkXXXXXXXXkkkk',
+    '...kXXXXXXXXk...',
+    '...kkkkkkkkkk...',
+  ],
+  jeans: [
+    'kkkkkkkkkk',
+    'kXXXXXXXXk',
+    'kXXXXxXXXk',
+    'kXXXkkXXXk',
+    'kXXXkkXXXk',
+    'kXXXkkXXXk',
+    'kXXXkkXXXk',
+    'kXXXkkXXXk',
+    'kkkkkkkkkk',
+  ],
+};
+
+export const CLOTH_IDS = Object.keys(CLOTHES);
+
+function shade(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const c = (v: number) => Math.max(0, Math.min(255, v + amt));
+  return `#${((c(n >> 16) << 16) | (c((n >> 8) & 255) << 8) | c(n & 255)).toString(16).padStart(6, '0')}`;
+}
+
+export function clothSprite(id: string, color: string): { url: string; w: number; h: number } {
+  const key = `cloth:${id}:${color}`;
+  const rows = CLOTHES[id];
+  const w = Math.max(...rows.map((r) => r.length));
+  const h = rows.length;
+  const hit = cache.get(key);
+  if (hit) return { url: hit, w, h };
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d')!;
+  const pal: Record<string, string> = { ...PALETTE, X: color, x: shade(color, -40) };
+  rows.forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      if (!pal[ch] || ch === '.') return;
+      ctx.fillStyle = pal[ch];
+      ctx.fillRect(x, y, 1, 1);
+    }),
+  );
+  const url = c.toDataURL();
+  cache.set(key, url);
+  return { url, w, h };
+}
+
 export function spriteImg(id: string, scale = 3, cls = 'sprite'): HTMLImageElement {
   const img = new Image();
   img.src = itemSprite(id);

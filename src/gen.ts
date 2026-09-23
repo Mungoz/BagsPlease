@@ -1,7 +1,7 @@
 import { yearsBefore, type DayNum } from './dates';
 import { EVENTS, type DayDef, type Genre } from './data/days';
-import { GREETS } from './data/dialogue';
-import { COMMON_SAFE, MEDICINES, itemsInGroup, type ItemGroup } from './data/items';
+import { GREETS, TICS, TRAITS } from './data/dialogue';
+import { COMMON_SAFE, DAFT_SAFE, GENRE_SAFE, ITEMS, MEDICINES, itemsInGroup, type ItemGroup } from './data/items';
 import { DOCTORS, FIRST, LAST, misspell } from './data/names';
 import { lookalike, photoOf, randomFace, type Presentation } from './gfx/portrait';
 import { fullName, itemVerdict } from './judge';
@@ -17,7 +17,7 @@ export interface GenCtx {
 let uidN = 0;
 export const uid = (p = 'u') => `${p}${(++uidN).toString(36)}`;
 
-const WILD: Record<Genre, number> = { rock: 0.4, edm: 0.85, folk: 0.3, metal: 0.5, finale: 0.6 };
+const WILD: Record<Genre, number> = { rock: 0.4, edm: 0.85, folk: 0.3, metal: 0.5, finale: 0.6, wellness: 0.6, cosplay: 0.95 };
 
 export function mkItem(def: string, extra: Partial<BagItem> = {}): BagItem {
   return { uid: uid('i'), def, ...extra };
@@ -88,7 +88,7 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
     body: [],
     dogAlert: false,
     bribe: 0,
-    lines: { greet: [rng.chance(0.4) ? rng.pick(GREETS[ev.genre]) : rng.pick(GREETS.any)] },
+    lines: personality(rng, ev.genre, age),
   };
 
   if (day.rules.includes('id_required')) {
@@ -100,7 +100,12 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
   if (day.n >= 2 && !o.noBag && rng.chance(0.88)) {
     const pool = rng.shuffle([...COMMON_SAFE]);
     att.bag = pool.slice(0, rng.int(2, 5)).map((d) => mkItem(d));
+    const flavour = GENRE_SAFE[ev.genre];
+    if (flavour && rng.chance(0.5)) att.bag.push(mkItem(rng.pick(flavour)));
+    if (rng.chance(0.15)) att.bag.push(mkItem(rng.pick(DAFT_SAFE)));
     if (rng.chance(0.45)) addDecoy(ctx, att);
+    // Keys and wallets tend to live in the side pocket.
+    for (const it of att.bag) if (['keys', 'wallet', 'lighter', 'cigarettes'].includes(it.def) && rng.chance(0.5)) it.pocket = true;
   }
   if (day.rules.includes('consent') && age < 18) {
     att.consent = mkConsent(rng, att, today);
@@ -111,6 +116,23 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
   return att;
 }
 
+/** Picks a personality and builds the attendee's lines from it. */
+function personality(rng: Rng, genre: Genre, age: number) {
+  const pool = age >= 60 ? TRAITS.filter((t) => ['pensioner', 'grumpy', 'posh', 'dad', 'oversharer'].includes(t.id)) : age < 18 ? TRAITS.filter((t) => ['nervous', 'superfan', 'student', 'lad'].includes(t.id)) : TRAITS;
+  const t = rng.chance(0.75) ? rng.pick(pool) : null;
+  const greetPool = t && rng.chance(0.55) ? t.greet : rng.chance(0.5) ? GREETS[genre] : GREETS.any;
+  let greet = rng.pick(greetPool);
+  if (rng.chance(0.12)) greet += ' ' + rng.pick(TICS);
+  const greetLines = [greet];
+  if (t?.followup && rng.chance(0.35)) greetLines.push(rng.pick(t.followup));
+  return {
+    greet: greetLines,
+    admit: t ? rng.pick(t.admit) : undefined,
+    deny: t ? rng.pick(t.deny) : undefined,
+    confiscate: t && rng.chance(0.6) ? rng.pick(t.confiscate) : undefined,
+  };
+}
+
 function mkConsent(rng: Rng, att: Attendee, date: DayNum) {
   const parentFirst = rng.pick([...FIRST.f, ...FIRST.m]);
   return { child: att.id?.name ?? fullName(att), guardian: `${parentFirst} ${att.last}`, phone: `07${rng.int(100, 999)} ${rng.int(100000, 999999)}`, date };
@@ -119,7 +141,7 @@ function mkConsent(rng: Rng, att: Attendee, date: DayNum) {
 /** Adds an item that looks suspicious but is permitted today. */
 function addDecoy(ctx: GenCtx, att: Attendee) {
   const { rng, day } = ctx;
-  const groups: ItemGroup[] = rng.shuffle(['glass', 'alcohol', 'aerosol', 'unsealed', 'gadget', 'spikes', 'camping', 'medication']);
+  const groups: ItemGroup[] = rng.shuffle(['glass', 'alcohol', 'aerosol', 'unsealed', 'gadget', 'spikes', 'camping', 'medication', 'meat', 'flame', 'replica']);
   for (const g of groups) {
     if (g === 'medication') {
       const med = rng.pick(MEDICINES);
@@ -153,6 +175,9 @@ interface Violation {
 
 function addToBag(a: Attendee, item: BagItem) {
   if (!a.bag) a.bag = [];
+  const g = ITEMS[item.def].group;
+  // Anything dodgy has a fair chance of being stashed in the side pocket.
+  if (['drug', 'weapon', 'medication', 'flame', 'pyro', 'gadget'].includes(g) && Math.random() < 0.35) item.pocket = true;
   a.bag.push(item);
   // keep contraband from always being the last thing in the bag
   const i = Math.floor(Math.random() * a.bag.length);
@@ -261,7 +286,7 @@ export const VIOLATIONS: Violation[] = [
     kind: 'drug',
     rule: 'bag_drugs',
     w: 2,
-    apply: (a, c) => addToBag(a, mkItem(c.rng.pick(['pills', 'powder', 'weed', 'pillTin', 'pillTin']))),
+    apply: (a, c) => addToBag(a, mkItem(c.rng.pick(['pills', 'powder', 'weed', 'pillTin', 'pillTin', 'nitrous']))),
   },
   { kind: 'aerosol', rule: 'bag_aerosol', w: 2, apply: groupItem('aerosol') },
   {
@@ -356,6 +381,9 @@ export const VIOLATIONS: Violation[] = [
   },
   { kind: 'pyro', rule: 'bag_pyro', w: 2, apply: groupItem('pyro') },
   { kind: 'spikes', rule: 'bag_spikes', w: 2, apply: groupItem('spikes') },
+  { kind: 'meat', rule: 'vegan', w: 3, apply: groupItem('meat') },
+  { kind: 'flame', rule: 'flames', w: 3, apply: groupItem('flame') },
+  { kind: 'replica', rule: 'replicas', w: 3, apply: groupItem('replica') },
   {
     kind: 'seal',
     rule: 'seal',

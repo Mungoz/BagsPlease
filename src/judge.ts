@@ -100,9 +100,9 @@ export function evaluate(att: Attendee, day: DayDef, decision: Decision, removed
   } else if (decision === 'deny') {
     if (!shouldDeny)
       cites.push(confiscatable.length ? 'Wrongful denial: confiscate the item, then admit' : 'Wrongful denial: attendee was entitled to entry');
-    else if (detainable) cites.push(`Failed to detain attendee carrying ${itemName(bad.find((x) => x.v === 'detain')!.i).toLowerCase()}`);
+    else if (detainable) cites.push(`Should have called the police: carrying ${itemName(bad.find((x) => x.v === 'detain')!.i).toLowerCase()}`);
   } else if (!detainable) {
-    cites.push('Wrongful detention');
+    cites.push('Wasted police time: nothing illegal on them');
   }
   let confiscatedOk = 0;
   for (const x of verdicts) {

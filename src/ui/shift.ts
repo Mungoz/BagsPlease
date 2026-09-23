@@ -2,15 +2,19 @@ import { clearBeatListeners, onBeat, sfx, startAmbient, stopAmbient } from '../a
 import { fmtShort } from '../dates';
 import { SCRIPTS } from '../data/characters';
 import type { DayDef } from '../data/days';
-import { ADMIT_LINES, CONFISCATE_LINES, DENY_LINES, DETAIN_LINES, EXCUSES, NO_DISCREPANCY } from '../data/dialogue';
+import {
+  ADMIT_LINES, CONFISCATE_LINES, DENY_LINES, DETAIN_LINES, EXCUSES, ITEM_QUIPS, NO_DISCREPANCY, POLICE_ARRIVALS, POLICE_THANKS, QUEUE_BANTER, SMELL_REMARKS, YAWNS,
+} from '../data/dialogue';
+import { ITEMS } from '../data/items';
 import { randomAttendee, type GenCtx } from '../gen';
+import { police as policeVisitor, randomVisitor } from '../data/visitors';
 import { faceURL } from '../gfx/portrait';
 import { Scene } from '../gfx/scene';
 import { checkPair, evaluate } from '../judge';
 import { hashStr, Rng } from '../rng';
 import type { Attendee, BagItem, Decision, GameState, StoryApi } from '../types';
 import {
-  bagEl, cashEl, citationEl, consentEl, guestListEl, h, idEl, itemCell, memoEl, noteEl, patdownEl, rulebookEl, rxEl, ticketEl,
+  bagEl, cashEl, citationEl, consentEl, guestListEl, h, idEl, memoEl, noteEl, patdownEl, rulebookEl, rxEl, ticketEl,
 } from './docs';
 
 export interface ShiftResult {
@@ -34,7 +38,7 @@ interface DDoc {
 
 const W = 960;
 const H = 540;
-const TOP = 150;
+const TOP = 112;
 const BOOTH_W = 300;
 const PAY = 5;
 const FINE = 5;
@@ -56,7 +60,7 @@ export class Shift {
   private primary: DDoc | null = null;
   private decision: Decision | null = null;
   private removed = new Set<string>();
-  private binStack: { uid: string; grid: HTMLElement; item: BagItem }[] = [];
+  private binStack: { uid: string; parent: HTMLElement; cell: HTMLElement }[] = [];
   private binCount = 0;
   private patted = false;
   private confiscateSaid = false;
@@ -74,6 +78,10 @@ export class Shift {
   private dayLen: number;
   private result: ShiftResult = { processed: 0, correct: 0, citations: [], fines: 0, salary: 0, extras: [] };
   private keyHandler = (e: KeyboardEvent) => this.onKey(e);
+  // Switching tab/app (or a phone call) pauses the shift so the clock doesn't run on without you.
+  private visHandler = () => {
+    if (document.hidden && !this.ended) this.setPaused(true);
+  };
 
   constructor(
     private g: GameState,
@@ -83,19 +91,24 @@ export class Shift {
   ) {
     this.rng = new Rng(hashStr(`day${day.n}-${Date.now()}`));
     const params = new URLSearchParams(location.search);
-    this.dayLen = params.has('fast') ? Number(params.get('fast')) || 25 : day.seconds;
+    const base = params.has('fast') ? Number(params.get('fast')) || 25 : day.seconds;
+    // Tired stewards lose track of time; a coffee flask helps.
+    const camp = g.camp;
+    const speed = (camp.energy >= 3 ? 1.35 : camp.energy >= 2 ? 1.15 : 1) * (camp.owned.includes('flask') ? 0.9 : 1);
+    this.dayLen = base / speed;
     if (params.has('debug')) (window as unknown as { __shift: Shift }).__shift = this;
     this.root = h('div', 'screen shift');
     this.root.innerHTML = `
       <canvas class="outside"></canvas>
       <div class="hud"><span class="hud-date f" data-field="clock"></span><span class="hud-time"></span><span class="hud-ev"></span><span class="hud-count"></span></div>
+      <button class="btn btn-pause" title="Pause (Esc)">II PAUSE</button>
       <div class="booth">
         <div class="window"><div class="window-bg"></div><img class="face f" data-field="face" draggable="false"/><div class="window-glass"></div></div>
         <div class="transcript"></div>
         <div class="booth-btns">
           <button class="btn btn-next">NEXT!</button>
           <button class="btn btn-pat">PAT-DOWN</button>
-          <button class="btn btn-detain">DETAIN</button>
+          <button class="btn btn-detain">CALL POLICE</button>
         </div>
       </div>
       <div class="desk">
@@ -111,7 +124,7 @@ export class Shift {
       <svg class="lines" viewBox="0 0 ${W} ${H}"></svg>
       <div class="banner hidden"></div>
       <div class="tooltip hidden"></div>
-      <div class="pause hidden"><div class="pause-box"><h2>PAUSED</h2><button class="btn btn-resume">RESUME</button><button class="btn btn-quit">QUIT TO TITLE</button><p>Progress is saved at the end of each day.</p></div></div>`;
+      <div class="pause hidden"><div class="pause-box"><h2>PAUSED</h2><button class="btn btn-resume">RESUME</button><button class="btn btn-quit">QUIT TO TITLE</button><p>Progress saves at the start of each day.<br>Quitting now restarts today's shift.</p></div></div>`;
 
     this.docsLayer = this.q('.docs-layer');
     this.transcript = this.q('.transcript');
@@ -150,20 +163,25 @@ export class Shift {
     }
     const scripts = (SCRIPTS[this.day.n] ?? []).filter((s) => !s.when || s.when(this.g));
     for (const s of scripts.sort((a, b) => a.at - b.at)) list.splice(s.at, 0, s.make(ctx));
+    // Sprinkle in visitors who just want a word. PC Okoro drops by on the first drugs day.
+    if (this.day.n >= 2) {
+      for (let i = 3 + this.rng.int(0, 2); i < list.length; i += this.rng.int(4, 7)) list.splice(i, 0, randomVisitor(ctx));
+      if (this.day.newRules.includes('bag_drugs') || this.day.newRules.includes('detain')) list.splice(1, 0, policeVisitor(ctx));
+    }
     this.queue = list;
   }
 
   private setupDesk() {
     const rb = rulebookEl(this.day);
-    this.addDoc(rb, 'rulebook', false, 670, 158);
-    if (this.day.guestList) this.addDoc(guestListEl(this.day), 'guestlist', false, 560, 165);
+    this.addDoc(rb, 'rulebook', false, 670, 120);
+    if (this.day.guestList) this.addDoc(guestListEl(this.day), 'guestlist', false, 560, 127);
     if (this.day.hints.length) {
       const m = memoEl(this.day);
       m.querySelector('.memo-x')!.addEventListener('click', (e) => {
         e.stopPropagation();
         this.removeDoc(this.docs.find((d) => d.el === m)!);
       });
-      this.addDoc(m, 'memo', false, 330, 200);
+      this.addDoc(m, 'memo', false, 330, 162);
     }
   }
 
@@ -175,6 +193,7 @@ export class Shift {
     clearBeatListeners();
     onBeat(() => this.scene.beat());
     document.addEventListener('keydown', this.keyHandler);
+    document.addEventListener('visibilitychange', this.visHandler);
     this.say('sys', `${this.day.event.name} - gates open. Call the first attendee.`);
     const loop = (t: number) => {
       const dt = Math.min(0.1, (t - (this.lastT || t)) / 1000);
@@ -191,6 +210,7 @@ export class Shift {
     stopAmbient();
     clearBeatListeners();
     document.removeEventListener('keydown', this.keyHandler);
+    document.removeEventListener('visibilitychange', this.visHandler);
   }
 
   private minutes() {
@@ -202,11 +222,22 @@ export class Shift {
     const m = Math.min(END_MIN, this.minutes());
     const frac = (m - START_MIN) / (END_MIN - START_MIN);
     this.scene.setTime(frac);
-    if (this.g.flags.bannerAdmitted && this.day.n === 10 && frac > 0.8) this.scene.bannerDrop = true;
+    if (this.g.flags.bannerAdmitted && this.day.n === 15 && frac > 0.8) this.scene.bannerDrop = true;
     const hh = Math.floor(m / 60);
     const mm = Math.floor(m % 60);
     this.q('.hud-time').textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
     this.q('.hud-count').textContent = `Processed: ${this.result.processed}`;
+    if (!this.closed && this.g.camp.hunger >= 3 && frac >= 0.7) {
+      // Starving stewards do not make it to 8pm.
+      this.closed = true;
+      this.q('.btn-next').classList.add('disabled');
+      this.showBanner('YOU FAINTED');
+      sfx.sad();
+      this.say('sys', 'The world goes sideways. Big Col finds you face-down in the amnesty bin. Shift over.');
+      if (!this.att && !this.busy) this.endShift();
+      return;
+    }
+    if (this.g.camp.energy >= 2 && !this.closed && Math.random() < dt / 25) this.say('sys', this.rng.pick(YAWNS));
     if (!this.closed && m >= END_MIN) {
       this.closed = true;
       this.q('.btn-next').classList.add('disabled');
@@ -220,6 +251,7 @@ export class Shift {
   private endShift() {
     if (this.ended) return;
     this.ended = true;
+    if (this.g.camp.hygiene >= 3) this.result.extras.push({ label: 'Kettle: "hygiene complaint"', amount: -5 });
     window.setTimeout(() => {
       this.destroy();
       this.onEnd(this.result);
@@ -242,6 +274,7 @@ export class Shift {
     );
     this.q('.bin').addEventListener('click', () => this.undoConfiscate());
     this.q('.btn-resume').addEventListener('click', () => this.setPaused(false));
+    this.q('.btn-pause').addEventListener('click', () => this.setPaused(true));
     this.q('.btn-quit').addEventListener('click', () => {
       this.destroy();
       this.onQuit();
@@ -264,18 +297,30 @@ export class Shift {
     // Tooltips for items.
     this.root.addEventListener('pointerover', (e) => {
       const it = (e.target as HTMLElement).closest('.item, .rb-icons img') as HTMLElement | null;
-      if (!it) return;
-      const tip = it.dataset.tip ?? (it as HTMLImageElement).title;
-      if (!tip) return;
-      this.tooltip.textContent = tip;
-      this.tooltip.classList.remove('hidden');
-      const p = this.rel(it.getBoundingClientRect());
-      this.tooltip.style.left = `${Math.min(W - 200, p.x)}px`;
-      this.tooltip.style.top = `${p.y - 26}px`;
+      if (it) this.identify(it);
     });
     this.root.addEventListener('pointerout', (e) => {
-      if ((e.target as HTMLElement).closest('.item, .rb-icons img')) this.tooltip.classList.add('hidden');
+      if (!(e.target as HTMLElement).closest('.item, .rb-icons img')) return;
+      // On touch screens there is no hover, so leave the label up for a moment after a tap.
+      if (e.pointerType === 'touch') window.setTimeout(() => this.tooltip.classList.add('hidden'), 1800);
+      else this.tooltip.classList.add('hidden');
     });
+  }
+
+  /** Shows what an item is: a tooltip, plus the name strip on its bag / pat-down report. */
+  private identify(it: HTMLElement) {
+    const tip = it.dataset.tip ?? (it as HTMLImageElement).title;
+    if (!tip) return;
+    this.tooltip.textContent = tip;
+    this.tooltip.classList.remove('hidden');
+    const p = this.rel(it.getBoundingClientRect());
+    this.tooltip.style.left = `${Math.max(4, Math.min(W - this.tooltip.offsetWidth - 4, p.x))}px`;
+    this.tooltip.style.top = `${p.y - 26}px`;
+    const info = it.closest('.bag, .patdown')?.querySelector('.bag-info');
+    if (info) {
+      info.textContent = tip;
+      info.classList.add('lit');
+    }
   }
 
   private onKey(e: KeyboardEvent) {
@@ -335,12 +380,21 @@ export class Shift {
     d.el.style.top = `${d.y}px`;
   }
 
+  private keepOnDesk(d: DDoc) {
+    const bottom = d.y + d.el.offsetHeight;
+    if (bottom > H - 4) this.moveDoc(d, d.x, Math.max(TOP - 6, H - 4 - d.el.offsetHeight));
+  }
+
   private makeDraggable(d: DDoc) {
     d.el.addEventListener('pointerdown', (e) => {
       if (this.inspecting || e.button !== 0) return;
       const target = e.target as HTMLElement;
       if (target.closest('.item')) {
         this.dragItem(e, target.closest('.item') as HTMLElement);
+        return;
+      }
+      if (target.closest('.cloth')) {
+        this.dragCloth(e, target.closest('.cloth') as HTMLElement);
         return;
       }
       if (target.closest('.rb-tab, .rb-min, .memo-x, button')) return;
@@ -371,6 +425,9 @@ export class Shift {
         if (moved) {
           sfx.drop();
           if (this.overBooth(d)) this.dropOnBooth(d);
+        } else {
+          // Pointer capture swallows child clicks, so announce taps explicitly.
+          target.dispatchEvent(new CustomEvent('tap', { bubbles: true }));
         }
       };
       d.el.addEventListener('pointermove', move);
@@ -419,23 +476,29 @@ export class Shift {
     const uid = cell.dataset.uid!;
     const item = this.findItem(uid);
     if (!item || !this.att) return;
-    const ghost = cell.cloneNode(true) as HTMLElement;
-    ghost.classList.add('ghost');
-    this.root.appendChild(ghost);
-    cell.classList.add('lifted');
-    this.tooltip.classList.add('hidden');
+    // Touching an item always tells you what it is; it only becomes a drag once you move.
+    this.identify(cell);
+    const p0 = this.pt(e);
+    let ghost: HTMLElement | null = null;
     const place = (ev: PointerEvent) => {
       const p = this.pt(ev);
+      if (!ghost) {
+        if (Math.hypot(p.x - p0.x, p.y - p0.y) < 6) return;
+        ghost = cell.cloneNode(true) as HTMLElement;
+        ghost.classList.add('ghost');
+        this.root.appendChild(ghost);
+        cell.classList.add('lifted');
+        this.tooltip.classList.add('hidden');
+      }
       ghost.style.left = `${p.x - 27}px`;
       ghost.style.top = `${p.y - 27}px`;
-      const over = this.overBin(p);
-      this.q('.bin').classList.toggle('hot', over);
+      this.q('.bin').classList.toggle('hot', this.overBin(p));
     };
-    place(e);
     const move = (ev: PointerEvent) => place(ev);
     const up = (ev: PointerEvent) => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
+      if (!ghost) return;
       ghost.remove();
       cell.classList.remove('lifted');
       this.q('.bin').classList.remove('hot');
@@ -443,6 +506,40 @@ export class Shift {
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
+  }
+
+  /** Clothes can be shoved around inside the bag to see what's underneath. */
+  private dragCloth(e: PointerEvent, cloth: HTMLElement) {
+    e.preventDefault();
+    e.stopPropagation();
+    const main = cloth.parentElement as HTMLElement;
+    const p0 = this.pt(e);
+    const x0 = cloth.offsetLeft;
+    const y0 = cloth.offsetTop;
+    cloth.style.zIndex = String(++this.z);
+    cloth.setPointerCapture(e.pointerId);
+    sfx.rustle();
+    const move = (ev: PointerEvent) => {
+      const p = this.pt(ev);
+      cloth.style.left = `${x0 + p.x - p0.x}px`;
+      cloth.style.top = `${y0 + p.y - p0.y}px`;
+    };
+    const up = (ev: PointerEvent) => {
+      cloth.removeEventListener('pointermove', move);
+      cloth.removeEventListener('pointerup', up);
+      cloth.removeEventListener('pointercancel', up);
+      // Dragged clear of the bag: it's been pulled out and dumped on the desk.
+      const p = this.pt(ev);
+      const r = this.rel(main.getBoundingClientRect());
+      if (p.x < r.x || p.x > r.x + r.w || p.y < r.y || p.y > r.y + r.h) {
+        cloth.classList.add('tossed');
+        sfx.rustle();
+        window.setTimeout(() => cloth.remove(), 250);
+      }
+    };
+    cloth.addEventListener('pointermove', move);
+    cloth.addEventListener('pointerup', up);
+    cloth.addEventListener('pointercancel', up);
   }
 
   private overBin(p: { x: number; y: number }) {
@@ -459,15 +556,17 @@ export class Shift {
     const item = this.findItem(uid);
     if (!item || this.removed.has(uid)) return;
     this.removed.add(uid);
-    const grid = cell.parentElement as HTMLElement;
+    const parent = cell.parentElement as HTMLElement;
     cell.remove();
-    this.binStack.push({ uid, grid, item });
+    this.binStack.push({ uid, parent, cell });
     this.binCount++;
     this.q('.bin-count').textContent = String(this.binCount);
     sfx.bin();
     if (!this.confiscateSaid && this.att) {
       this.confiscateSaid = true;
-      this.say('them', this.att.lines.confiscate ?? this.rng.pick(CONFISCATE_LINES));
+      const quips = ITEM_QUIPS[ITEMS[item.def].group];
+      const line = this.att.lines.confiscate ?? (quips && this.rng.chance(0.7) ? this.rng.pick(quips) : this.rng.pick(CONFISCATE_LINES));
+      this.say('them', line);
     }
   }
 
@@ -475,7 +574,8 @@ export class Shift {
     const last = this.binStack.pop();
     if (!last) return;
     this.removed.delete(last.uid);
-    last.grid.appendChild(itemCell(last.item));
+    // Put it back exactly where it was.
+    last.parent.appendChild(last.cell);
     this.binCount--;
     this.q('.bin-count').textContent = String(this.binCount);
     sfx.click();
@@ -530,6 +630,7 @@ export class Shift {
     this.confiscateSaid = false;
     this.busy = false;
     this.transcript.innerHTML = '';
+    if (this.rng.chance(0.2)) this.say('sys', this.rng.pick(QUEUE_BANTER));
     this.faceImg.src = faceURL(a.face);
     this.faceImg.classList.add('in');
     if (this.day.rules.includes('k9')) {
@@ -539,7 +640,13 @@ export class Shift {
         this.say('sys', 'Sergeant the sniffer dog SITS DOWN next to the attendee.');
       }
     }
-    a.lines.greet.forEach((l, i) => window.setTimeout(() => this.att === a && this.say('them', l), 300 + i * 900));
+    const greet = [...a.lines.greet];
+    if (!a.visitor && this.g.camp.hygiene >= 2 && this.rng.chance(0.35)) greet.push(this.rng.pick(SMELL_REMARKS));
+    greet.forEach((l, i) => window.setTimeout(() => this.att === a && this.say('them', l), 300 + i * 900));
+    if (a.visitor) {
+      window.setTimeout(() => this.att === a && this.showChoice(a, a.choice!), 300 + greet.length * 900);
+      return;
+    }
 
     // Documents land on the counter side of the desk.
     const ev = this.day.event.color;
@@ -549,15 +656,19 @@ export class Shift {
       off += 6;
       return d;
     };
-    if (a.bag) put(bagEl(a.bag), 'bag', 560, 318);
-    if (a.consent) put(consentEl(a.consent), 'consent', 572, 164);
-    if (a.rx) put(rxEl(a.rx), 'rx', 580, 172);
-    if (a.id) put(idEl(a.id), 'id', 312, 292);
+    if (a.bag) {
+      const bag = put(bagEl(a.bag, a.seed), 'bag', 560, 224);
+      // Unzipping (or opening the pocket) makes the bag taller: nudge it up so it stays on screen.
+      bag.el.addEventListener('tap', () => requestAnimationFrame(() => this.keepOnDesk(bag)));
+    }
+    if (a.consent) put(consentEl(a.consent), 'consent', 572, 126);
+    if (a.rx) put(rxEl(a.rx), 'rx', 580, 134);
+    if (a.id) put(idEl(a.id), 'id', 312, 254);
     off = 0;
-    this.primary = put(ticketEl(a.ticket, ev), 'ticket', 308, 158);
-    for (const n of a.notes) put(noteEl(n), 'note', 420, 250, false);
+    this.primary = put(ticketEl(a.ticket, ev), 'ticket', 308, 120);
+    for (const n of a.notes) put(noteEl(n), 'note', 420, 212, false);
     if (a.bribe) {
-      put(cashEl(a.bribe), 'cash', 420, 450);
+      put(cashEl(a.bribe), 'cash', 420, 412);
       sfx.cash();
     }
     if (a.choice) {
@@ -571,7 +682,22 @@ export class Shift {
       g: this.g,
       income: (label, amount) => this.result.extras.push({ label, amount }),
       say: (who, text) => this.say(who, text),
+      minutes: (n) => (this.elapsed += (n / (END_MIN - START_MIN)) * this.dayLen),
     };
+  }
+
+  /** A visitor has said their piece: off they go, no stamp, no pay. */
+  private leaveVisitor(a: Attendee) {
+    if (this.att !== a) return;
+    this.att = null;
+    this.busy = true;
+    this.faceImg.classList.remove('in');
+    this.scene.leave('deny');
+    window.setTimeout(() => {
+      this.busy = false;
+      if (this.closed) this.endShift();
+      else this.q('.btn-next').classList.remove('disabled');
+    }, 700);
   }
 
   private showChoice(a: Attendee, c: NonNullable<Attendee['choice']>) {
@@ -583,6 +709,7 @@ export class Shift {
         this.say('you', o.label);
         window.setTimeout(() => this.att === a && this.say('them', o.reply), 500);
         o.apply?.(this.api());
+        if (a.visitor) window.setTimeout(() => this.leaveVisitor(a), 2200);
       });
       box.appendChild(b);
     }
@@ -596,13 +723,15 @@ export class Shift {
     sfx.pat();
     this.elapsed += (10 / (END_MIN - START_MIN)) * this.dayLen;
     this.say('you', 'Arms out, please. Pat-down.');
-    this.addDoc(patdownEl(this.att), 'patdown', true, 318, 250);
+    this.addDoc(patdownEl(this.att), 'patdown', true, 318, 212);
   }
 
   private detain() {
     if (!this.att || !this.day.rules.includes('detain')) return;
-    sfx.alarm();
-    this.say('sys', 'Security guards escort the attendee away.');
+    if (this.att.visitor) return;
+    sfx.siren();
+    this.say('you', '(into radio) Police to Gate 3, please.');
+    this.say('sys', this.rng.pick(POLICE_ARRIVALS));
     this.finish('detain');
   }
 
@@ -635,7 +764,12 @@ export class Shift {
     a.onDone?.({ ...this.api(), decision, correct: !out.citations.length, removed: this.removed, keptCash });
 
     this.result.processed++;
-    this.result.salary += PAY;
+    // Broken morale: you just can't be bothered, and it shows in your pay.
+    this.result.salary += this.g.camp.morale >= 3 ? PAY - 1 : PAY;
+    if (decision === 'detain' && !out.citations.length) {
+      this.result.extras.push({ label: 'Police thank-you (good bust)', amount: 5 });
+      window.setTimeout(() => this.say('sys', this.rng.pick(POLICE_THANKS)), 900);
+    }
     this.g.stats.processed++;
     this.g.stats.confiscated += this.removed.size;
     if (decision === 'detain') this.g.stats.detained++;
@@ -667,7 +801,7 @@ export class Shift {
   private printCitation(text: string, pen: string) {
     sfx.printer();
     const el = citationEl(text, pen);
-    const d = this.addDoc(el, 'citation', false, 470, 152);
+    const d = this.addDoc(el, 'citation', false, 470, 114);
     window.setTimeout(() => this.docs.includes(d) && this.removeDoc(d), 7000);
   }
 

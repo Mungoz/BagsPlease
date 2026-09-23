@@ -1,18 +1,18 @@
-import type { GameState } from './types';
+import type { Genre } from './data/days';
+import type { Camp, GameState } from './types';
 
-const KEY = 'bagsplease.save.v1';
-const VERSION = 1;
+const KEY = 'bagsplease.save.v2';
+const VERSION = 2;
+
+/** What Nan's new hip costs. Hit it by Summer's End for the good epilogue. */
+export const GOAL = 250;
 
 export function newGame(): GameState {
   return {
     version: VERSION,
     day: 0,
-    money: 30,
-    family: [
-      { id: 'nan', name: 'Nan', rel: 'Your grandmother', hungry: 0, cold: 0, sick: 0, gone: false },
-      { id: 'theo', name: 'Theo', rel: 'Little brother, 9', hungry: 0, cold: 0, sick: 0, gone: false },
-      { id: 'biscuit', name: 'Biscuit', rel: 'The dog', hungry: 0, cold: 0, sick: 0, gone: false },
-    ],
+    money: 20,
+    camp: { hunger: 0, energy: 0, hygiene: 0, morale: 0, owned: [], starving: 0, miserable: 0 },
     flags: {
       freefest: 0,
       betrayed: false,
@@ -27,6 +27,7 @@ export function newGame(): GameState {
   };
 }
 
+// Game state lives in localStorage, so it survives closing the tab (it's per-browser, per-site).
 export function save(g: GameState) {
   try {
     localStorage.setItem(KEY, JSON.stringify(g));
@@ -70,53 +71,99 @@ export function setPref(k: string, v: string) {
   }
 }
 
-export const PRICES = { food: 15, electric: 10, medicine: 10 };
+// ---------- crew camp ----------
 
-export interface Bills {
-  food: boolean;
-  electric: boolean;
-  medicine: Record<string, boolean>;
-}
-
-const GONE_TEXT: Record<string, string> = {
-  nan: 'Nan was taken into hospital. The doctors say she will not be coming home.',
-  theo: 'Social services have taken Theo into care. You are not allowed to see him.',
-  biscuit: 'Biscuit was taken in by the neighbours. He seems happier there.',
+export type Meal = 'none' | 'noodles' | 'burger';
+export const MEALS: Record<Meal, { label: string; cost: number }> = {
+  none: { label: 'Skip dinner', cost: 0 },
+  noodles: { label: 'Pot noodle', cost: 2 },
+  burger: { label: 'Burger van feast', cost: 6 },
 };
 
-/** Applies the evening's choices to the family. Returns news lines to show the player. */
-export function applyBills(g: GameState, b: Bills, rand: () => number): string[] {
-  const news: string[] = [];
-  for (const m of g.family) {
-    if (m.gone) continue;
-    const wasSick = m.sick > 0;
-    m.hungry = b.food ? 0 : m.hungry + 1;
-    m.cold = b.electric ? 0 : m.cold + 1;
-    if (wasSick) {
-      if (b.medicine[m.id]) {
-        m.sick = 0;
-        news.push(`${m.name} is feeling better.`);
-      } else m.sick++;
-    } else {
-      const risk = 0.03 + m.hungry * 0.25 + m.cold * 0.15;
-      if (m.hungry >= 2 || m.cold >= 3 || rand() < risk) {
-        m.sick = 1;
-        news.push(`${m.name} has fallen ill.`);
-      }
-    }
-    if (m.sick >= 3 || m.hungry >= 4) {
-      m.gone = true;
-      news.push(GONE_TEXT[m.id]);
-    }
-  }
-  return news;
+export interface Option {
+  id: string;
+  label: string;
+  cost: number;
+  desc: string;
 }
 
-export function statusText(m: GameState['family'][number]): string {
-  if (m.gone) return 'GONE';
-  const s: string[] = [];
-  if (m.hungry) s.push(m.hungry > 1 ? 'Starving' : 'Hungry');
-  if (m.cold) s.push('Cold');
-  if (m.sick) s.push(m.sick > 1 ? 'Very sick' : 'Sick');
-  return s.length ? s.join(', ') : 'OK';
+export const NIGHT_OPTIONS: Option[] = [
+  { id: 'shower', label: 'Hot shower token', cost: 4, desc: 'Hygiene fully restored' },
+  { id: 'call', label: 'Charge phone & call Nan', cost: 2, desc: 'Morale +1' },
+  { id: 'pint', label: 'Pint at the crew bar', cost: 5, desc: 'Morale restored, but Energy -1' },
+];
+
+export const SHOP: Option[] = [
+  { id: 'earplugs', label: 'Proper earplugs', cost: 5, desc: 'Loud nights stop draining Energy' },
+  { id: 'kettle', label: 'Camping kettle', cost: 8, desc: 'Pot noodles count as a full meal' },
+  { id: 'wipes', label: 'Bulk wet wipes', cost: 4, desc: 'Hygiene drops half as fast' },
+  { id: 'lights', label: 'Fairy lights for the tent', cost: 6, desc: '+1 Morale every night' },
+  { id: 'flask', label: 'Coffee flask', cost: 10, desc: 'Shift clock runs 10% slower' },
+  { id: 'mattress', label: 'Air mattress', cost: 15, desc: '+1 Energy every night' },
+];
+
+export const STAT_NAMES: Record<keyof Pick<Camp, 'hunger' | 'energy' | 'hygiene' | 'morale'>, { title: string; levels: string[]; effect: string }> = {
+  hunger: { title: 'HUNGER', levels: ['Full', 'Peckish', 'Hungry', 'Starving'], effect: 'Starving: you faint early. Two nights starving = sent home.' },
+  energy: { title: 'ENERGY', levels: ['Fresh', 'Tired', 'Knackered', 'Zombie'], effect: 'Tired shifts fly by faster.' },
+  hygiene: { title: 'HYGIENE', levels: ['Fresh', 'Whiffy', 'Ripe', 'Biohazard'], effect: 'People notice. At Biohazard, Kettle fines you £5.' },
+  morale: { title: 'MORALE', levels: ['Buzzing', 'OK', 'Fed up', 'Broken'], effect: 'Broken: £1 less per attendee. Two nights = you quit.' },
+};
+
+export interface NightChoice {
+  meal: Meal;
+  extras: Set<string>;
+  buy: Set<string>;
+}
+
+const LOUD: Genre[] = ['rock', 'edm', 'metal', 'finale', 'cosplay'];
+const clamp = (n: number) => Math.max(0, Math.min(3, n));
+
+/** Applies a night at crew camp. Returns what happened, for the "that night" screen. */
+export function applyNight(g: GameState, ch: NightChoice, genre: Genre, citations: number, rand: () => number): string[] {
+  const c = g.camp;
+  const has = (id: string) => c.owned.includes(id);
+  for (const id of ch.buy) if (!has(id)) c.owned.push(id);
+  const news: string[] = [];
+
+  if (ch.meal === 'burger' || (ch.meal === 'noodles' && has('kettle'))) c.hunger = 0;
+  else if (ch.meal === 'none') c.hunger = clamp(c.hunger + 1);
+  if (ch.meal === 'burger') news.push(rand() < 0.5 ? 'The burger van guy gives you extra onions. A good omen.' : 'You eat a burger the size of your head. Glorious.');
+  if (ch.meal === 'none') news.push('Your stomach growls louder than the headliner.');
+
+  if (ch.extras.has('shower')) c.hygiene = 0;
+  else c.hygiene = clamp(c.hygiene + (has('wipes') ? (rand() < 0.5 ? 1 : 0) : 1));
+  if (ch.extras.has('shower')) news.push(rand() < 0.3 ? 'The shower is lukewarm and someone has left a single flip-flop. Still, bliss.' : 'Hot water! Actual hot water!');
+
+  const loud = LOUD.includes(genre);
+  let e = c.energy - 1;
+  if (loud && !has('earplugs')) {
+    e += 2;
+    news.push(genre === 'metal' ? 'Someone in the next tent screams along to guitar solos until 4am.' : 'The afterparty rages outside your tent until dawn.');
+  }
+  if (ch.extras.has('pint')) e += 1;
+  if (has('mattress')) e -= 1;
+  if (c.hunger >= 2) e += 1;
+  c.energy = clamp(e);
+
+  let m = c.morale + 1;
+  if (citations === 0) m -= 1;
+  if (citations >= 3) m += 1;
+  if (ch.extras.has('call')) {
+    m -= 1;
+    news.push(rand() < 0.5 ? 'Nan says she is "very proud" and asks if you have met any pop stars.' : 'Nan tells you about bingo for forty minutes. You feel better.');
+  }
+  if (has('lights')) m -= 1;
+  if (c.hunger >= 2 || c.hygiene >= 2) m += 1;
+  if (ch.extras.has('pint')) {
+    m = 0;
+    news.push('One pint at the crew bar turns into a karaoke duet with Big Col. Worth it.');
+  }
+  c.morale = clamp(m);
+
+  c.starving = c.hunger >= 3 ? c.starving + 1 : 0;
+  c.miserable = c.morale >= 3 ? c.miserable + 1 : 0;
+  if (c.hunger >= 3) news.push('You are STARVING. Tomorrow could get messy.');
+  if (c.morale >= 3) news.push('You lie awake wondering why you ever took this job.');
+  if (c.energy >= 3) news.push('You barely sleep. Tomorrow will be a blur.');
+  return news;
 }

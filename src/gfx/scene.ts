@@ -4,7 +4,9 @@ import { HAIRS, SHIRTS, SKINS, type FaceParams } from './portrait';
 // The strip above the booth: festival field, fence, gate, and the queue.
 
 export const SW = 480;
-export const SH = 75;
+export const SH = 56;
+// The world is laid out 75px tall; the top slice of sky is cropped off to keep the strip slim.
+const V = 75 - SH;
 const GATE_X = 252;
 const WINDOW_X = 236;
 const LANE_Y = 58;
@@ -46,6 +48,8 @@ const STAGE_COLORS: Record<Genre, string[]> = {
   folk: ['#ffd88a', '#ffb05a', '#ffffff'],
   metal: ['#ff2a2a', '#ffffff', '#ff7a2a'],
   finale: ['#ffcf3a', '#ff5ab0', '#3ad8ff', '#ffffff'],
+  wellness: ['#c8a0ff', '#a0ffd8', '#ffe0a0'],
+  cosplay: ['#ff3ac0', '#3aff9a', '#ffe03a', '#3a8aff'],
 };
 
 export class Scene {
@@ -165,7 +169,8 @@ export class Scene {
       w.ty = LANE_Y + 6;
       w.speed = 34;
       for (const dx of [-8, 8]) {
-        const g: Walker = { skin: SKINS[2][0], hair: HAIRS[0], shirt: '#e8e030', hat: null, x: w.x + dx, y: LANE_Y + 6, tx: SW + 20 + dx, ty: LANE_Y + 6, speed: 34, phase: Math.random() * 5, guard: true };
+        // Police officers: hi-vis jackets and dark hats.
+        const g: Walker = { skin: SKINS[dx < 0 ? 2 : 5][0], hair: HAIRS[0], shirt: '#e8e030', hat: '#101428', x: w.x + dx, y: LANE_Y + 6, tx: SW + 20 + dx, ty: LANE_Y + 6, speed: 34, phase: Math.random() * 5, guard: true };
         this.others.push(g);
       }
     }
@@ -196,16 +201,18 @@ export class Scene {
     const c = this.ctx;
     const t = this.time;
     // sky: midday blue -> golden -> dusk purple
-    const sky = c.createLinearGradient(0, 0, 0, 45);
+    const sky = c.createLinearGradient(0, 0, 0, 30);
     const top = lerpColor('#4a9ae8', '#2a1a5a', Math.max(0, t - 0.5) * 2);
     const bot = lerpColor('#bfe4ff', '#ff9a5a', Math.max(0, t - 0.35) * 1.5);
     sky.addColorStop(0, top);
     sky.addColorStop(1, bot);
     c.fillStyle = sky;
     c.fillRect(0, 0, SW, SH);
+    c.save();
+    c.translate(0, -V);
     // sun
     const sx = 40 + t * 380;
-    const sy = 12 + Math.pow(t, 2) * 30;
+    const sy = 25 + Math.pow(t, 2) * 18;
     c.fillStyle = t > 0.7 ? '#ff7a3a' : '#fff4b0';
     c.fillRect(sx - 3, sy - 3, 7, 7);
     c.fillRect(sx - 4, sy - 2, 9, 5);
@@ -213,11 +220,11 @@ export class Scene {
     c.fillStyle = lerpColor('#4a9a4a', '#2a3a4a', t);
     for (let x = 0; x < SW; x++) {
       const h = 34 + Math.sin(x / 37) * 4 + Math.sin(x / 13) * 1.5;
-      c.fillRect(x, h, 1, SH - h);
+      c.fillRect(x, h, 1, SH + V - h);
     }
     // ferris wheel
     const fx = 440;
-    const fy = 24;
+    const fy = 33;
     c.strokeStyle = lerpColor('#d8d8e8', '#8a8aa8', t);
     c.lineWidth = 1;
     c.beginPath();
@@ -240,11 +247,11 @@ export class Scene {
     const cols = STAGE_COLORS[this.genre];
     const col = cols[this.beatN % cols.length];
     c.fillStyle = '#22222c';
-    c.fillRect(330, 14, 70, 24);
+    c.fillRect(330, 26, 70, 13);
     c.fillStyle = '#3a3a48';
-    c.fillRect(326, 10, 78, 5);
-    c.fillRect(326, 10, 3, 30);
-    c.fillRect(401, 10, 3, 30);
+    c.fillRect(326, 21, 78, 5);
+    c.fillRect(326, 21, 3, 19);
+    c.fillRect(401, 21, 3, 19);
     // light beams
     c.globalAlpha = 0.15 + this.pulse * 0.35 + t * 0.2;
     c.fillStyle = col;
@@ -252,20 +259,20 @@ export class Scene {
       const bx = 338 + i * 18;
       const sway = Math.sin(performance.now() / 700 + i) * 12;
       c.beginPath();
-      c.moveTo(bx, 15);
-      c.lineTo(bx + sway - 6, 0);
-      c.lineTo(bx + sway + 6, 0);
+      c.moveTo(bx, 26);
+      c.lineTo(bx + sway - 6, V);
+      c.lineTo(bx + sway + 6, V);
       c.fill();
     }
     c.globalAlpha = 1;
     c.fillStyle = col;
-    for (let i = 0; i < 4; i++) c.fillRect(336 + i * 18, 15, 3, 2);
+    for (let i = 0; i < 4; i++) c.fillRect(336 + i * 18, 26, 3, 2);
     if (this.bannerDrop) {
       c.fillStyle = '#3ac25a';
-      c.fillRect(336, 18, 58, 12);
+      c.fillRect(336, 28, 58, 11);
       c.fillStyle = '#ffffff';
       c.font = '7px monospace';
-      c.fillText('OURS', 355, 27);
+      c.fillText('OURS', 355, 36);
     }
     // crowd
     for (const p of this.crowd) {
@@ -277,7 +284,7 @@ export class Scene {
     }
     // ground
     c.fillStyle = lerpColor('#6ab04a', '#3a5a3a', t);
-    c.fillRect(0, 50, SW, SH - 50);
+    c.fillRect(0, 50, SW, SH + V - 50);
     c.fillStyle = lerpColor('#b89a6a', '#6a5a4a', t);
     c.fillRect(0, LANE_Y + 10, GATE_X, 5);
     c.fillRect(0, LANE_Y + 1, SW, 5);
@@ -319,8 +326,9 @@ export class Scene {
     // dusk tint
     if (t > 0.6) {
       c.fillStyle = `rgba(20,10,60,${(t - 0.6) * 0.5})`;
-      c.fillRect(0, 0, SW, SH);
+      c.fillRect(0, 0, SW, SH + V);
     }
+    c.restore();
   }
 }
 

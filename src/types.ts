@@ -23,7 +23,10 @@ export type RuleId =
   | 'bag_spikes'
   | 'seal'
   | 'ticket_code'
-  | 'guestlist';
+  | 'guestlist'
+  | 'vegan'
+  | 'flames'
+  | 'replicas';
 
 export type TicketType = 'DAY' | 'WEEKEND' | 'CAMPING' | 'VIP';
 
@@ -81,6 +84,8 @@ export interface BagItem {
   label?: string;
   /** Overrides the tooltip name (e.g. disguised items). */
   name?: string;
+  /** Tucked in the zipped side pocket rather than the main compartment. */
+  pocket?: boolean;
 }
 
 export interface Lines {
@@ -97,6 +102,8 @@ export interface StoryApi {
   g: GameState;
   income: (label: string, amount: number) => void;
   say: (who: 'you' | 'them' | 'sys', text: string) => void;
+  /** Moves the shift clock on by this many in-game minutes. */
+  minutes: (n: number) => void;
 }
 
 export interface DoneApi extends StoryApi {
@@ -137,23 +144,28 @@ export interface Attendee {
   /** Dialogue choice presented after the greeting. */
   choice?: { prompt: string; options: Choice[] };
   onDone?: (api: DoneApi) => void;
+  /** Not trying to get in: just wants a word (quiz, lost kid, directions...). Leaves after the choice. */
+  visitor?: boolean;
 }
 
-export interface FamilyMember {
-  id: string;
-  name: string;
-  rel: string;
-  hungry: number;
-  cold: number;
-  sick: number;
-  gone: boolean;
+/** The steward's own wellbeing, living in the crew campsite. 0 = fine ... 3 = critical. */
+export interface Camp {
+  hunger: number;
+  energy: number;
+  hygiene: number;
+  morale: number;
+  /** One-off camp upgrades bought from the crew shop. */
+  owned: string[];
+  /** Consecutive nights spent critical, for collapse/quit endings. */
+  starving: number;
+  miserable: number;
 }
 
 export interface GameState {
   version: number;
   day: number;
   money: number;
-  family: FamilyMember[];
+  camp: Camp;
   flags: {
     freefest: number;
     betrayed: boolean;
@@ -165,4 +177,6 @@ export interface GameState {
     dazzaThanked: boolean;
   };
   stats: { processed: number; citations: number; detained: number; confiscated: number; correct: number };
+  /** A finished shift waiting to be settled at crew camp (so closing the game there loses nothing). */
+  pending?: import('./ui/shift').ShiftResult;
 }

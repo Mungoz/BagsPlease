@@ -13,7 +13,10 @@ export type ItemGroup =
   | 'camping'
   | 'spikes'
   | 'pyro'
-  | 'gadget';
+  | 'gadget'
+  | 'meat'
+  | 'flame'
+  | 'replica';
 
 export interface ItemDef {
   id: string;
@@ -554,6 +557,19 @@ const S = {
     'kEEeEEeEEk',
     'kkkkkkkkkk',
   ],
+  nitrous: [
+    '.kGk.kGk.kGk.',
+    'kGwGkGwGkGwGk',
+    'kGGGkGGGkGGGk',
+    'kGGGkGGGkGGGk',
+    'kGGGkGGGkGGGk',
+    'kGGGkGGGkGGGk',
+    '.kkk.kkk.kkk.',
+    '..kmmk..kbbk..',
+    '.kmmmmk.kbbbk.',
+    '..kmmk...kbk..',
+    '...kk.....k...',
+  ],
   rxBottle: [
     'kkkkkkkk',
     'kwwwwwwk',
@@ -689,6 +705,185 @@ const S = {
     'kkkkkkkkkkkkkk',
     '.kN........Nk.',
   ],
+  sausageRoll: [
+    '.kkkkkkkkkkk.',
+    'kttyttyttyttk',
+    'ktttttttttkmk',
+    'ktttttttttkRk',
+    'kttyttyttykmk',
+    '.kkkkkkkkkkk.',
+  ],
+  burger: [
+    '..kkkkkkkk..',
+    '.kttttttttk.',
+    'ktwttttwtttk',
+    'kttttttttttk',
+    'keeeeeeeeeek',
+    'kNNNNNNNNNNk',
+    'kyyyyyyyyyyk',
+    'kttttttttttk',
+    '.kkkkkkkkkk.',
+  ],
+  tofuBurger: [
+    '..kkkkkkkk..',
+    '.kttttttttk.',
+    'ktwttttwtttk',
+    'kttttttttttk',
+    'keeeeeeeeeek',
+    'kwwGwwwGwwwk',
+    'keeeeeeeeeek',
+    'kttttttttttk',
+    '.kkkkkkkkkk.',
+  ],
+  hotdog: [
+    '..kkkkkkkkkk..',
+    '.kttttttttttk.',
+    'kRRRRRRRRRRRRk',
+    'kyRyRyRyRyRyRk',
+    'kRRRRRRRRRRRRk',
+    '.kttttttttttk.',
+    '..kkkkkkkkkk..',
+  ],
+  candle: [
+    '..o..',
+    '.oyo.',
+    '..k..',
+    'kkkkk',
+    'kwwwk',
+    'kwwwk',
+    'kwwGk',
+    'kwwwk',
+    'kwwwk',
+    'kkkkk',
+  ],
+  incense: [
+    'G...G...G',
+    '.G...G...',
+    '..k..k..k',
+    '..n..n..n',
+    '..n..n..n',
+    '..n..n..n',
+    '..n..n..n',
+    'kkkkkkkkk',
+    'kNNNNNNNk',
+    'kkkkkkkkk',
+  ],
+  lantern: [
+    '.kkkkkkk.',
+    'krrrrrrrk',
+    'krrwrrrrk',
+    'krrwrrrrk',
+    'krrrrrrrk',
+    '.krrrrrk.',
+    '..kyyyk..',
+    '...kok...',
+  ],
+  crystal: [
+    '...k...',
+    '..kck..',
+    '.kccck.',
+    'kcwccck',
+    'kcwcCck',
+    'kccCCck',
+    '.kcCck.',
+    '..kck..',
+    '...k...',
+  ],
+  flamingo: [
+    '....kk....',
+    '...kmmk...',
+    '...kmkk...',
+    '...kmk....',
+    '...kmk....',
+    '..kmmmkkk.',
+    '.kmmmmmmmk',
+    'kmmmmmmmk.',
+    '.kkkkkkk..',
+  ],
+  chicken: [
+    '..kk.......',
+    '.kyyk......',
+    'koyyk......',
+    '.kyyk......',
+    '..kyyyyyyk.',
+    '..kyyyyyyyk',
+    '...kyyyyyk.',
+    '....kook...',
+    '....k..k...',
+  ],
+  cone: [
+    '....kk....',
+    '...kook...',
+    '...kwwk...',
+    '..kooook..',
+    '..kwwwwk..',
+    '.koooooook',
+    'kkkkkkkkkk',
+  ],
+  wings: [
+    'kk......kk',
+    'kcck..kcck',
+    'kcccckccck',
+    '.kcccccck.',
+    '.kccckcck.',
+    'kcck..kcck',
+    'kk......kk',
+  ],
+  foamSword: [
+    '.........kk',
+    '........kbk',
+    '.......kbk.',
+    '......kbk..',
+    '.....kbk...',
+    '....kbk....',
+    '.kkkkk.....',
+    '..kyk......',
+    '.kyk.......',
+    'kkk........',
+  ],
+  katana: [
+    '..........kk',
+    '.........kGk',
+    '........kGk.',
+    '.......kGk..',
+    '......kGk...',
+    '.....kGk....',
+    '....kGk.....',
+    '..kkkkk.....',
+    '...kRk......',
+    '..kRk.......',
+    '.kRk........',
+    '.kk.........',
+  ],
+  wand: [
+    '.......y.',
+    '......yky',
+    '.......k.',
+    '......n..',
+    '.....n...',
+    '....n....',
+    '...n.....',
+    '..N......',
+    '.N.......',
+  ],
+  blaster: [
+    'kkkkkkkkkkkk',
+    'kddddddddddk',
+    'kddddddkkkkk',
+    'kddkddk.....',
+    'kddkkk......',
+    'kddk........',
+    'kkkk........',
+  ],
+  waterPistol: [
+    'kkkkkkkkkkkk',
+    'kbbbbbbbbbbk',
+    'kbbbbbbkkkkk',
+    'kyykbbk.....',
+    'kyykkk......',
+    'kyyk........',
+    'kkkk........',
+  ],
   mixtape: [
     'kkkkkkkkkkkk',
     'kwwwwwwwwwwk',
@@ -747,6 +942,7 @@ const defs: ItemDef[] = [
   { id: 'pills', name: 'Baggie of pills', group: 'drug', sprite: S.pills },
   { id: 'powder', name: 'Baggie of white powder', group: 'drug', sprite: S.powder },
   { id: 'weed', name: 'Baggie of cannabis', group: 'drug', sprite: S.weed },
+  { id: 'nitrous', name: 'Laughing gas canisters & balloons', group: 'drug', sprite: S.nitrous },
   { id: 'pillTin', name: 'Tin of mints (rattles oddly... full of pills)', group: 'drug', sprite: S.mints },
 
   { id: 'rxBottle', name: 'Prescription pills', group: 'medication', sprite: S.rxBottle },
@@ -765,6 +961,28 @@ const defs: ItemDef[] = [
   { id: 'laser', name: 'Laser pointer', group: 'gadget', sprite: S.laser },
   { id: 'selfie', name: 'Selfie stick', group: 'gadget', sprite: S.selfie },
   { id: 'drone', name: 'Camera drone', group: 'gadget', sprite: S.drone },
+
+  { id: 'sausageRoll', name: 'Sausage roll (definitely contains sausage)', group: 'meat', sprite: S.sausageRoll },
+  { id: 'burger', name: 'Beef burger, slightly warm', group: 'meat', sprite: S.burger },
+  { id: 'hotdog', name: 'Hot dog (mystery meat)', group: 'meat', sprite: S.hotdog },
+  { id: 'veganRoll', name: 'Vegan "sausage" roll', group: 'safe', sprite: S.sausageRoll },
+  { id: 'tofuBurger', name: 'Tofu burger', group: 'safe', sprite: S.tofuBurger },
+
+  { id: 'candle', name: 'Scented candle ("Midnight Musk")', group: 'flame', sprite: S.candle },
+  { id: 'incense', name: 'Incense sticks', group: 'flame', sprite: S.incense },
+  { id: 'lantern', name: 'Sky lantern', group: 'flame', sprite: S.lantern },
+  { id: 'crystal', name: 'Healing crystal (allegedly)', group: 'safe', sprite: S.crystal },
+
+  { id: 'katana', name: 'Replica katana (metal, sharp-ish)', group: 'replica', sprite: S.katana },
+  { id: 'blaster', name: 'Replica pistol (very realistic)', group: 'replica', sprite: S.blaster },
+  { id: 'foamSword', name: 'Foam sword', group: 'safe', sprite: S.foamSword },
+  { id: 'wand', name: 'Wizard wand (a stick)', group: 'safe', sprite: S.wand },
+  { id: 'waterPistol', name: 'Water pistol (bright blue plastic)', group: 'safe', sprite: S.waterPistol },
+
+  { id: 'flamingo', name: 'Inflatable flamingo', group: 'safe', sprite: S.flamingo },
+  { id: 'chicken', name: 'Rubber chicken', group: 'safe', sprite: S.chicken },
+  { id: 'cone', name: 'Traffic cone ("souvenir")', group: 'safe', sprite: S.cone },
+  { id: 'wings', name: 'Fairy wings', group: 'safe', sprite: S.wings },
 ];
 
 export const ITEMS: Record<string, ItemDef> = Object.fromEntries(defs.map((d) => [d.id, d]));
@@ -778,5 +996,17 @@ export const COMMON_SAFE = [
   'earplugs', 'glowsticks', 'camera', 'wetwipes', 'lighter', 'cigarettes', 'map', 'bandana',
   'toiletroll', 'sandwich', 'mints', 'inhaler',
 ];
+
+/** Rarer daft things people bring. */
+export const DAFT_SAFE = ['flamingo', 'chicken', 'cone', 'wings', 'crystal', 'foamSword', 'wand', 'waterPistol', 'veganRoll', 'tofuBurger'];
+
+/** Items that suit a particular festival crowd. */
+export const GENRE_SAFE: Record<string, string[]> = {
+  wellness: ['crystal', 'crystal', 'tofuBurger', 'veganRoll', 'wings'],
+  cosplay: ['foamSword', 'wand', 'waterPistol', 'wings'],
+  folk: ['sandwich', 'poncho', 'flamingo'],
+  metal: ['earplugs', 'bandana'],
+  edm: ['glowsticks', 'glowsticks', 'wings'],
+};
 
 export const MEDICINES = ['SERTRALEX 50mg', 'CODRAMOL 30mg', 'DIAZEPIX 5mg', 'METHYLAN 10mg', 'PROPRANOL 40mg', 'ZOLPITAN 10mg'];
