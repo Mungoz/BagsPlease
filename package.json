@@ -1,0 +1,22 @@
+{
+  "name": "bags-please",
+  "version": "1.0.0",
+  "description": "A Papers, Please-style bag checking game set at a music festival gate.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "package": "npm run build && cd dist && bestzip ../bags-please-itch.zip *"
+  },
+  "devDependencies": {
+    "bestzip": "^4.0.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  },
+  "dependencies": {
+    "@fontsource/press-start-2p": "^5.3.0",
+    "@fontsource/vt323": "^5.3.0"
+  }
+}
