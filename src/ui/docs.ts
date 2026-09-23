@@ -123,15 +123,10 @@ export function cashEl(amount: number): HTMLElement {
 
 /** A description for a bit of clothing, e.g. "Damp red socks". */
 function clothName(kind: string, colour: string, rng: Rng): string {
-  const flavour: Record<string, string[]> = {
-    tshirt: ['band t-shirt (2009 tour)', 't-shirt, inside out', 't-shirt that says "I SURVIVED"', 't-shirt, suspiciously crispy'],
-    socks: ['socks (damp)', 'socks, odd pair', 'socks. Just socks. Thank god.', 'festival socks (day 3)'],
-    towel: ['towel, still wet', 'beach towel', 'towel. Nobody knows whose.'],
-    hoodie: ['hoodie (emergency layer)', 'hoodie that smells of campfire', 'oversized hoodie'],
-    jeans: ['spare jeans', 'jeans, extremely muddy', 'jeans rolled up like a burrito'],
-  };
-  const f = rng.pick(flavour[kind] ?? ['clothes']);
-  return `${colour[0].toUpperCase()}${colour.slice(1)} ${f}`;
+  const noun: Record<string, string> = { tshirt: 't-shirt', socks: 'socks', towel: 'towel', hoodie: 'hoodie', jeans: 'jeans' };
+  const adj = rng.pick(['', '', 'Damp', 'Muddy', 'Crispy', 'Smelly', 'Inside-out']);
+  const text = `${adj ? adj + ' ' : ''}${colour} ${noun[kind] ?? 'clothes'}`;
+  return text[0].toUpperCase() + text.slice(1);
 }
 
 // What you find in an empty side pocket (or an empty bag).
@@ -201,7 +196,7 @@ export function bagEl(items: BagItem[], seed: number): HTMLElement {
       img.src = s.url;
       img.draggable = false;
       img.className = 'cloth';
-      img.dataset.tip = clothName(kind, colour, rng) + ' - drag it out of the bag';
+      img.dataset.tip = clothName(kind, colour, rng);
       img.style.width = `${s.w * sc}px`;
       img.style.height = `${s.h * sc}px`;
       img.style.left = `${x + (58 - s.w * sc) / 2}px`;
@@ -237,7 +232,7 @@ export function itemCell(it: BagItem): HTMLElement {
   cell.dataset.uid = it.uid;
   cell.dataset.field = `item:${it.uid}`;
   cell.classList.add('f');
-  cell.dataset.tip = itemName(it) + (it.label ? ` - label: "${it.label}"` : '');
+  cell.dataset.tip = itemName(it) + (it.label ? `: ${it.label}` : '');
   const img = new Image();
   img.src = itemSprite(it.def);
   img.draggable = false;

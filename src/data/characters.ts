@@ -243,7 +243,7 @@ export const SCRIPTS: Record<number, Script[]> = {
       at: 4,
       make: (c) => {
         const a = person(c, 'Sid', 'Harlow', 34, FACES.sid);
-        a.bag = [mkItem('powder', { name: "Bag of 'sherbet' (it is not sherbet)" }), mkItem('crisps'), mkItem('water')];
+        a.bag = [mkItem('powder', { name: "'Sherbet' (white powder)" }), mkItem('crisps'), mkItem('water')];
         a.lines = {
           greet: ["Me again. Just sherbet this time. For the kids."],
           detain: "You'll regret this, steward. Sid Harlow doesn't forget.",
@@ -387,8 +387,8 @@ export const SCRIPTS: Record<number, Script[]> = {
       make: (c) => {
         const a = person(c, 'Darren', 'Pike', 31, { ...FACES.dazza, hat: 4, paint: 3 });
         a.bag = [
-          mkItem('sausageRoll', { name: "Sausage roll ('it's vegan, trust me') - it is pork" }),
-          mkItem('sausageRoll', { name: "Sausage roll ('also vegan') - still pork" }),
+          mkItem('sausageRoll', { name: "'Vegan' sausage roll (pork)" }),
+          mkItem('sausageRoll', { name: 'Sausage roll (also pork)' }),
           mkItem('veganRoll'),
           mkItem('crystal'),
           mkItem('water'),
@@ -406,7 +406,7 @@ export const SCRIPTS: Record<number, Script[]> = {
       at: 4,
       make: (c) => {
         const a = person(c, 'Moonbeam', 'Harrington-Smythe', 46, FACES.moonbeam, 'f');
-        a.bag = [mkItem('crystal'), mkItem('crystal'), mkItem('incense'), mkItem('hotdog', { name: 'Hot dog ("ethically sourced")' }), mkItem('tofuBurger')];
+        a.bag = [mkItem('crystal'), mkItem('crystal'), mkItem('incense'), mkItem('hotdog', { name: '"Ethical" hot dog' }), mkItem('tofuBurger')];
         a.lines = {
           greet: ['Namaste. I am Moonbeam. Formerly Susan.', "I'm actually one of the organisers. Well, I donated a gong."],
           confiscate: 'That hot dog was ethically sourced. From a garage.',
@@ -420,7 +420,7 @@ export const SCRIPTS: Record<number, Script[]> = {
       at: 7,
       make: (c) => {
         const a = person(c, 'Sid', 'Harlow', 34, { ...FACES.sid, hat: 4 });
-        a.bag = [mkItem('weed', { name: "Bag of 'herbal tea' (it is not tea)" }), mkItem('crystal'), mkItem('phone')];
+        a.bag = [mkItem('weed', { name: "'Herbal tea' (cannabis)" }), mkItem('crystal'), mkItem('phone')];
         a.lines = {
           greet: ["I've found inner peace, steward. And some... herbal tea.", "Very relaxing tea. You smoke it. I mean brew it."],
           detain: "This is a very un-zen way to treat a person!",
@@ -647,7 +647,7 @@ export const SCRIPTS: Record<number, Script[]> = {
       at: 4,
       make: (c) => {
         const a = person(c, 'Darren', 'Pike', 31, { ...FACES.dazza, hat: 3, hatColor: 3, hair: 7, beard: 3 });
-        a.bag = [mkItem('wand'), mkItem('katana', { name: 'Cosplay sword "Dazzlesting" (metal prop)' }), mkItem('crisps')];
+        a.bag = [mkItem('wand'), mkItem('katana', { name: 'Metal sword "Dazzlesting"' }), mkItem('crisps')];
         a.lines = {
           greet: ["I have come as DAZZALF THE GREY.", 'You shall not... hang on, is my ticket alright?'],
           confiscate: 'Dazzalf needs his sword! ...Fine. The wand is more powerful anyway.',

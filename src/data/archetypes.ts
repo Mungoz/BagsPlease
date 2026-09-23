@@ -27,7 +27,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['(He windmills an invisible power chord at you and walks in backwards.)'],
     deny: ["You can't stop the rock. You can only slightly delay it."],
     face: { hairStyle: 4, shirt: 2, shirtStyle: 3 },
-    items: [{ def: 'earplugs', name: 'Earplugs (unopened, as a statement)' }],
+    items: [{ def: 'earplugs', name: 'Unopened earplugs' }],
   },
   {
     id: 'dadrock',
@@ -36,7 +36,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['The conference begins.'],
     deny: ["I'll tell Sandra it got cancelled. Due to rock."],
     face: { beard: 2, glasses: 1, shirtStyle: 3 },
-    items: [{ def: 'sandwich', name: 'Sandwiches, cut into triangles by Sandra' }],
+    items: [{ def: 'sandwich', name: "Sandra's sandwiches" }],
   },
   {
     id: 'roadie',
@@ -45,7 +45,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['If anything needs lifting, I am everywhere.'],
     deny: ["Fine. I'll carry myself home."],
     face: { beard: 3, shirt: 2, hat: 2, hatColor: 1 },
-    items: [{ def: 'toiletroll', name: "Gaffer tape (it's a toilet roll, he's taped it)" }],
+    items: [{ def: 'toiletroll', name: 'Gaffer-taped toilet roll' }],
   },
   // ---- Bassline All-Dayer ----
   {
@@ -56,7 +56,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ["I'm going to find the bass and live inside it."],
     deny: ["That's fine. I'll dance here. I once danced at a funeral. Different vibe."],
     face: { shades: 1, paint: 1 },
-    items: [{ def: 'glowsticks', name: '47 glowsticks, taped into a crown' }],
+    items: [{ def: 'glowsticks', name: 'Glowstick crown' }],
   },
   {
     id: 'trex',
@@ -65,7 +65,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['RAWR. Thank you. RAWR.'],
     deny: ['(The T-rex deflates slightly. Emotionally.)'],
     face: { shirt: 4, shirtStyle: 1 },
-    items: [{ def: 'poncho', name: 'Spare dinosaur (deflated, folded)' }],
+    items: [{ def: 'poncho', name: 'Spare dinosaur (deflated)' }],
   },
   {
     id: 'usbdj',
@@ -74,7 +74,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ["If anyone needs a DJ, I'll be in the portaloo queue. Networking."],
     deny: ['Tough crowd. Tough gate. Tough life.'],
     face: { hat: 2, hatColor: 1, shades: 1 },
-    items: [{ def: 'powerbank', name: 'USB stick: "BANGERZ_FINAL_FINAL_v3"' }],
+    items: [{ def: 'powerbank', name: 'USB stick "BANGERZ_v3"' }],
   },
   // ---- Folk & Family Fayre ----
   {
@@ -85,8 +85,8 @@ export const ARCHETYPES: Archetype[] = [
     deny: ['(He jingles. But sadly.)'],
     face: { hat: 4, beard: 3, shirt: 3 },
     items: [
-      { def: 'bandana', name: 'Morris hanky (for waving at the sun)' },
-      { def: 'keys', name: 'Leg bells (thirty-seven of them)' },
+      { def: 'bandana', name: 'Morris hanky' },
+      { def: 'keys', name: '37 leg bells' },
     ],
   },
   {
@@ -97,7 +97,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ["Lovely. I'll be by the apple tree. There isn't an apple tree. I'll be by it."],
     deny: ['The orchard will hear of this.'],
     face: { hat: 5, hatColor: 5, beard: 2 },
-    items: [{ def: 'map', name: 'Map to "the good orchard" (it is a drawing of a tree)' }],
+    items: [{ def: 'map', name: 'Drawing of a tree' }],
   },
   {
     id: 'banjo',
@@ -106,7 +106,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['Duelling banjos, anyone? No? I shall duel myself.'],
     deny: ['(A single, sad banjo twang echoes across the field.)'],
     face: { hat: 1, hatColor: 5, beard: 1 },
-    items: [{ def: 'earplugs', name: 'Earplugs (for other people)' }],
+    items: [{ def: 'earplugs', name: 'Earplugs (for others)' }],
   },
   // ---- Good Vibes Wellness Retreat ----
   {
@@ -116,7 +116,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ["Namaste. I'll go and fetch Gerald."],
     deny: ['Gerald will hear about this. Gerald hears everything.'],
     face: { hat: 4, paint: 3 },
-    items: [{ def: 'map', name: 'Laminated goat care instructions ("NO HI-VIS")' }],
+    items: [{ def: 'map', name: 'Goat care instructions' }],
   },
   {
     id: 'breathwork',
@@ -125,7 +125,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['(They exhale for the first time in a minute. They are slightly purple.)'],
     deny: ["I'm going to breathe about this. Aggressively."],
     face: { hairStyle: 8, earring: true, nosering: true },
-    items: [{ def: 'water', name: 'Water (charged under a full moon, sealed)' }],
+    items: [{ def: 'water', name: 'Moon water (sealed)' }],
   },
   {
     id: 'crystalseller',
@@ -134,7 +134,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['Your aura just went slightly less beige. Well done.'],
     deny: ["Mercury is in retrograde. And so, frankly, are you."],
     face: { hat: 4, earring: true, glasses: 1 },
-    items: [{ def: 'crystal', name: 'Crystal that "absorbs negativity" (it is a Polo)' }],
+    items: [{ def: 'crystal', name: 'Crystal (it is a Polo)' }],
   },
   // ---- Ironclad Metal Fest ----
   {
@@ -144,7 +144,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['TAX RETURNS ARE ETERNAL! Sorry. Excited.'],
     deny: ["I'll be filing a complaint. In triplicate. In BLOOD. Well, biro."],
     face: { paint: 2, shirt: 2, glasses: 2 },
-    items: [{ def: 'wetwipes', name: 'Corpse paint remover (for the office on Monday)' }],
+    items: [{ def: 'wetwipes', name: 'Corpse paint remover' }],
   },
   {
     id: 'neckbrace',
@@ -153,7 +153,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ["Pit's this way? Don't answer. I can feel it in my vertebrae."],
     deny: ['My neck brace and I are very disappointed in you.'],
     face: { hairStyle: 4, shirt: 2, shirtStyle: 1 },
-    items: [{ def: 'sandwich', name: 'A sandwich, pre-headbanged' }],
+    items: [{ def: 'sandwich', name: 'Pre-headbanged sandwich' }],
   },
   {
     id: 'viking',
@@ -173,7 +173,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['(The horse gallops in, slightly out of sync with itself.)'],
     deny: ['(The back half says something unrepeatable into the front half.)'],
     face: { hat: 1, hatColor: 5 },
-    items: [{ def: 'sandwich', name: 'Two packed lunches (one is for the back half)' }],
+    items: [{ def: 'sandwich', name: 'Two packed lunches' }],
   },
   {
     id: 'vending',
@@ -182,7 +182,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ["(Something drops inside the costume with a clunk. It's crisps.)"],
     deny: ['Out of order. Emotionally.'],
     face: { shirt: 9, shirtStyle: 2 },
-    items: [{ def: 'crisps', name: 'Crisps (dispensed from own costume)' }],
+    items: [{ def: 'crisps', name: 'Costume-dispensed crisps' }],
   },
   {
     id: 'asyou',
@@ -191,7 +191,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ["You're doing great. I'd know. I'm you."],
     deny: ['Classic me. So strict. So... beige.'],
     face: { hiVis: true, hat: 0, shades: 0, paint: 0 },
-    items: [{ def: 'map', name: 'Clipboard (blank, for vibes)' }],
+    items: [{ def: 'map', name: 'Blank clipboard' }],
   },
   // ---- Summer's End ----
   {
@@ -201,7 +201,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ['See you in 2087.'],
     deny: ['In 1987 the steward gave me a Twix. Just saying.'],
     face: { old: true, hair: 7, beard: 3, hat: 5 },
-    items: [{ def: 'glowsticks', name: 'Every wristband since 1987 (on a string)' }],
+    items: [{ def: 'glowsticks', name: 'Wristbands since 1987' }],
   },
   {
     id: 'weeper',
@@ -210,7 +210,7 @@ export const ARCHETYPES: Archetype[] = [
     admit: ["(They hug the gate. Then you. Then the gate again.)"],
     deny: ["(They cry harder. It's actually quite impressive.)"],
     face: { paint: 1 },
-    items: [{ def: 'wetwipes', name: 'Emergency tissues (some are for you)' }],
+    items: [{ def: 'wetwipes', name: 'Emergency tissues' }],
   },
 ];
 

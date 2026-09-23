@@ -940,7 +940,7 @@ const defs: ItemDef[] = [
   { id: 'sandwich', name: 'Sandwich', group: 'safe', sprite: S.sandwich },
   { id: 'knitting', name: 'Knitting needles & wool', group: 'safe', sprite: S.knitting },
   { id: 'inhaler', name: 'Asthma inhaler', group: 'safe', sprite: S.inhaler },
-  { id: 'mints', name: 'Tin of mints (lid shut, just mints)', group: 'safe', sprite: S.mints },
+  { id: 'mints', name: 'Tin of mints', group: 'safe', sprite: S.mints },
   { id: 'mixtape', name: 'Mixtape', group: 'safe', sprite: S.mixtape },
   { id: 'banner', name: 'Rolled-up banner', group: 'safe', sprite: S.banner },
 
@@ -949,7 +949,7 @@ const defs: ItemDef[] = [
   { id: 'perfume', name: 'Glass perfume bottle', group: 'glass', sprite: S.perfume },
 
   { id: 'beerCan', name: 'Can of lager', group: 'alcohol', sprite: S.beerCan },
-  { id: 'flask', name: 'Hip flask (whisky)', group: 'alcohol', sprite: S.flask },
+  { id: 'flask', name: 'Hip flask of whisky', group: 'alcohol', sprite: S.flask },
   { id: 'wineBox', name: 'Box of wine', group: 'alcohol', sprite: S.wineBox },
 
   { id: 'deodorant', name: 'Spray deodorant', group: 'aerosol', sprite: S.deodorant },
@@ -958,17 +958,17 @@ const defs: ItemDef[] = [
 
   { id: 'knife', name: 'Folding knife', group: 'weapon', sprite: S.knife },
   { id: 'knuckles', name: 'Knuckle-duster', group: 'weapon', sprite: S.knuckles },
-  { id: 'gun', name: 'Handgun (loaded)', group: 'weapon', sprite: S.blaster },
+  { id: 'gun', name: 'Handgun', group: 'weapon', sprite: S.blaster },
 
   { id: 'pills', name: 'Baggie of pills', group: 'drug', sprite: S.pills },
   { id: 'powder', name: 'Baggie of white powder', group: 'drug', sprite: S.powder },
   { id: 'weed', name: 'Baggie of cannabis', group: 'drug', sprite: S.weed },
-  { id: 'nitrous', name: 'Laughing gas canisters & balloons', group: 'drug', sprite: S.nitrous },
-  { id: 'pillTin', name: "Tin of 'mints' - lid won't shut, it's full of pills", group: 'drug', sprite: S.pillTin },
+  { id: 'nitrous', name: 'Laughing gas canisters', group: 'drug', sprite: S.nitrous },
+  { id: 'pillTin', name: 'Tin of "mints" (full of pills)', group: 'drug', sprite: S.pillTin },
 
   { id: 'rxBottle', name: 'Prescription pills', group: 'medication', sprite: S.rxBottle },
 
-  { id: 'waterOpen', name: 'Water bottle (seal broken)', group: 'unsealed', sprite: S.waterOpen },
+  { id: 'waterOpen', name: 'Opened water bottle', group: 'unsealed', sprite: S.waterOpen },
 
   { id: 'chair', name: 'Folding camping chair', group: 'camping', sprite: S.chair },
   { id: 'tent', name: 'Pop-up tent', group: 'camping', sprite: S.tent },
@@ -983,26 +983,26 @@ const defs: ItemDef[] = [
   { id: 'selfie', name: 'Selfie stick', group: 'gadget', sprite: S.selfie },
   { id: 'drone', name: 'Camera drone', group: 'gadget', sprite: S.drone },
 
-  { id: 'sausageRoll', name: 'Sausage roll (definitely contains sausage)', group: 'meat', sprite: S.sausageRoll },
-  { id: 'burger', name: 'Beef burger, slightly warm', group: 'meat', sprite: S.burger },
-  { id: 'hotdog', name: 'Hot dog (mystery meat)', group: 'meat', sprite: S.hotdog },
+  { id: 'sausageRoll', name: 'Sausage roll', group: 'meat', sprite: S.sausageRoll },
+  { id: 'burger', name: 'Beef burger', group: 'meat', sprite: S.burger },
+  { id: 'hotdog', name: 'Hot dog', group: 'meat', sprite: S.hotdog },
   { id: 'veganRoll', name: 'Vegan "sausage" roll', group: 'safe', sprite: S.sausageRoll },
   { id: 'tofuBurger', name: 'Tofu burger', group: 'safe', sprite: S.tofuBurger },
 
-  { id: 'candle', name: 'Scented candle ("Midnight Musk")', group: 'flame', sprite: S.candle },
+  { id: 'candle', name: 'Scented candle', group: 'flame', sprite: S.candle },
   { id: 'incense', name: 'Incense sticks', group: 'flame', sprite: S.incense },
   { id: 'lantern', name: 'Sky lantern', group: 'flame', sprite: S.lantern },
-  { id: 'crystal', name: 'Healing crystal (allegedly)', group: 'safe', sprite: S.crystal },
+  { id: 'crystal', name: 'Healing crystal', group: 'safe', sprite: S.crystal },
 
-  { id: 'katana', name: 'Cosplay sword (metal prop, blunt)', group: 'replica', sprite: S.katana },
-  { id: 'blaster', name: 'Cosplay ray gun (heavy metal prop)', group: 'replica', sprite: S.rayGun },
+  { id: 'katana', name: 'Metal cosplay sword', group: 'replica', sprite: S.katana },
+  { id: 'blaster', name: 'Metal cosplay ray gun', group: 'replica', sprite: S.rayGun },
   { id: 'foamSword', name: 'Foam sword', group: 'safe', sprite: S.foamSword },
-  { id: 'wand', name: 'Wizard wand (a stick)', group: 'safe', sprite: S.wand },
-  { id: 'waterPistol', name: 'Water pistol (bright blue plastic)', group: 'safe', sprite: S.waterPistol },
+  { id: 'wand', name: 'Wizard wand', group: 'safe', sprite: S.wand },
+  { id: 'waterPistol', name: 'Plastic water pistol', group: 'safe', sprite: S.waterPistol },
 
   { id: 'flamingo', name: 'Inflatable flamingo', group: 'safe', sprite: S.flamingo },
   { id: 'chicken', name: 'Rubber chicken', group: 'safe', sprite: S.chicken },
-  { id: 'cone', name: 'Traffic cone ("souvenir")', group: 'safe', sprite: S.cone },
+  { id: 'cone', name: 'Traffic cone', group: 'safe', sprite: S.cone },
   { id: 'wings', name: 'Fairy wings', group: 'safe', sprite: S.wings },
 ];
 
