@@ -9,6 +9,7 @@ import { ITEMS } from '../data/items';
 import { randomAttendee, type GenCtx } from '../gen';
 import { police as policeVisitor, randomVisitor } from '../data/visitors';
 import { faceURL } from '../gfx/portrait';
+import { dogSprite } from '../gfx/sprite';
 import { Scene } from '../gfx/scene';
 import { checkPair, evaluate, itemName } from '../judge';
 import { hashStr, Rng } from '../rng';
@@ -106,7 +107,7 @@ export class Shift {
       <div class="hud"><span class="hud-date f" data-field="clock"></span><span class="hud-time"></span><span class="hud-ev"></span><span class="hud-count"></span></div>
       <button class="btn btn-pause" title="Pause (Esc)">II PAUSE</button>
       <div class="booth">
-        <div class="window"><div class="window-bg"></div><img class="face f" data-field="face" draggable="false"/><div class="window-glass"></div></div>
+        <div class="window"><div class="window-bg"></div><img class="face f" data-field="face" draggable="false"/><img class="k9 hidden" draggable="false" title="Sergeant, the sniffer dog"/><div class="k9-alert hidden">DOG ALERT!<br><small>PAT-DOWN them</small></div><div class="window-glass"></div></div>
         <div class="transcript"></div>
         <div class="booth-btns">
           <button class="btn btn-next">NEXT!</button>
@@ -171,7 +172,10 @@ export class Shift {
     for (const s of scripts.sort((a, b) => a.at - b.at)) list.splice(s.at, 0, s.make(ctx));
     // Sprinkle in visitors who just want a word. PC Okoro drops by on the first drugs day.
     if (this.day.n >= 2) {
-      for (let i = 3 + this.rng.int(0, 2); i < list.length; i += this.rng.int(4, 7)) list.splice(i, 0, randomVisitor(ctx));
+      for (let i = 3 + this.rng.int(0, 2); i < list.length; i += this.rng.int(4, 7)) {
+        const v = randomVisitor(ctx);
+        if (v) list.splice(i, 0, v);
+      }
       if (this.day.newRules.includes('bag_drugs') || this.day.newRules.includes('detain')) {
         // PC Okoro has already dropped by: keep him out of the random visitors today.
         list.splice(1, 0, policeVisitor(ctx));
@@ -199,7 +203,7 @@ export class Shift {
   start() {
     this.scene.start();
     this.scene.setQueue(this.queue.slice(0, 14).map((a) => a.face));
-    if (this.day.rules.includes('k9')) this.scene.setDog('stand');
+    if (this.day.rules.includes('k9')) this.setDog('stand');
     startAmbient(this.day.event.genre);
     clearBeatListeners();
     onBeat(() => this.scene.beat());
@@ -678,13 +682,21 @@ export class Shift {
     this.confiscateSaid = false;
     this.busy = false;
     this.transcript.innerHTML = '';
-    if (this.rng.chance(0.2)) this.say('sys', this.rng.pick(QUEUE_BANTER));
+    const seen = (this.g.flags.seen ??= []);
+    if (a.seenKey && !seen.includes(a.seenKey)) seen.push(a.seenKey);
+    // Queue banter: each line at most once per season.
+    const banter = QUEUE_BANTER.map((_, i) => i).filter((i) => !seen.includes('banter:' + i));
+    if (banter.length && this.rng.chance(0.2)) {
+      const i = this.rng.pick(banter);
+      seen.push('banter:' + i);
+      this.say('sys', QUEUE_BANTER[i]);
+    }
     this.faceImg.src = faceURL(a.face);
     this.faceImg.classList.remove('hop', 'shake', 'nabbed', 'talk');
     this.q('.window').classList.remove('flash-red');
     this.faceImg.classList.add('in');
     if (this.day.rules.includes('k9')) {
-      this.scene.setDog(a.dogAlert ? 'sit' : 'stand');
+      this.setDog(a.dogAlert ? 'sit' : 'stand');
       if (a.dogAlert) {
         sfx.bark();
         this.say('sys', 'Sergeant the sniffer dog SITS DOWN next to the attendee.');
@@ -783,6 +795,8 @@ export class Shift {
   private patDown() {
     if (!this.att || this.att.visitor || this.patted || !this.day.rules.includes('k9')) return;
     this.patted = true;
+    this.q('.k9-alert').classList.add('hidden');
+    this.q('.btn-pat').classList.remove('pulse');
     sfx.pat();
     this.elapsed += (10 / (END_MIN - START_MIN)) * this.dayLen;
     this.say('you', 'Arms out, please. Pat-down.');
@@ -854,7 +868,7 @@ export class Shift {
 
     this.react(decision === 'admit' ? 'hop' : decision === 'deny' ? 'shake' : 'nabbed');
     this.scene.leave(decision);
-    if (this.day.rules.includes('k9')) this.scene.setDog('stand');
+    if (this.day.rules.includes('k9')) this.setDog('stand');
     this.primary = null;
     this.decision = null;
     this.toggleTray(false);
@@ -865,6 +879,17 @@ export class Shift {
       if (this.closed) this.endShift();
       else this.q('.btn-next').classList.remove('disabled');
     }, 900);
+  }
+
+  /** Sergeant in the booth window (and the tiny one outside). Sitting = sniffed something. */
+  private setDog(state: 'stand' | 'sit') {
+    this.scene.setDog(state);
+    const dog = this.q('.k9') as HTMLImageElement;
+    dog.src = dogSprite(state === 'sit');
+    dog.classList.remove('hidden');
+    dog.classList.toggle('sitting', state === 'sit');
+    this.q('.k9-alert').classList.toggle('hidden', state !== 'sit');
+    this.q('.btn-pat').classList.toggle('pulse', state === 'sit');
   }
 
   /** Clears things that belong to the person who just left. */

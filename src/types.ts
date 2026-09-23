@@ -146,6 +146,8 @@ export interface Attendee {
   onDone?: (api: DoneApi) => void;
   /** Not trying to get in: just wants a word (quiz, lost kid, directions...). Leaves after the choice. */
   visitor?: boolean;
+  /** Marks this one as 'seen' for the season once they reach the window. */
+  seenKey?: string;
 }
 
 /** The steward's own wellbeing, living in the crew campsite. 0 = fine ... 3 = critical. */
@@ -175,6 +177,8 @@ export interface GameState {
     bannerAdmitted: boolean;
     arrested: boolean;
     dazzaThanked: boolean;
+    /** Visitors, banter and crowd types already met this season - they never repeat. */
+    seen?: string[];
   };
   stats: { processed: number; citations: number; detained: number; confiscated: number; correct: number };
   /** A finished shift waiting to be settled at crew camp (so closing the game there loses nothing). */

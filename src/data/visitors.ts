@@ -435,13 +435,21 @@ POOL.push(
 );
 
 /** A random visitor suitable for today. */
-export function randomVisitor(c: GenCtx): Attendee {
-  const ok = POOL.filter((p, i) => (!p.when || p.when(c.day)) && (!p.genres || p.genres.includes(c.day.event.genre)) && (i === 0 || !c.used?.has('visitor:' + i)));
+// POOL[0] is Kettle's quiz (different question each time: once a day), POOL[1] is PC Okoro (story days only).
+// Everyone else turns up at most once per season. Returns null once the pool runs dry.
+export function randomVisitor(c: GenCtx): Attendee | null {
+  const seen = new Set(c.state.flags.seen ?? []);
+  const ok = POOL.map((p, i) => ({ p, i })).filter(
+    ({ p, i }) => i !== 1 && (!p.when || p.when(c.day)) && (!p.genres || p.genres.includes(c.day.event.genre)) && !c.used?.has('visitor:' + i) && !seen.has('visitor:' + i),
+  );
+  if (!ok.length) return null;
   // Festival-specific visitors get a good share, otherwise the general crowd drowns them out.
-  const themed = ok.filter((p) => p.genres);
+  const themed = ok.filter(({ p }) => p.genres);
   const chosen = themed.length && c.rng.chance(0.4) ? c.rng.pick(themed) : c.rng.pick(ok);
-  c.used?.add('visitor:' + POOL.indexOf(chosen));
-  return chosen.make(c);
+  c.used?.add('visitor:' + chosen.i);
+  const a = chosen.p.make(c);
+  if (chosen.i !== 0) a.seenKey = 'visitor:' + chosen.i;
+  return a;
 }
 
 export { kettleQuiz, police };

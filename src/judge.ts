@@ -68,6 +68,7 @@ export function docProblems(att: Attendee, day: DayDef): string[] {
     const c = att.consent;
     if (!c) out.push('Under 18 without consent form');
     else if (c.child !== (att.id?.name ?? fullName(att))) out.push('Consent form is for someone else');
+    else if (c.guardian === c.child) out.push('Consent form signed by the child themselves');
     else if (c.date !== today) out.push('Consent form not dated today');
   }
   return out;
@@ -183,6 +184,8 @@ export function checkPair(aKey: string, bKey: string, att: Attendee, day: DayDef
   if (att.rx && has('rx.expiry', 'clock') && att.rx.expiry < today) return { kind: 'rxexpired', you: 'This prescription has expired.' };
   if (att.consent && has('consent.child', 'id.name') && id && att.consent.child !== id.name)
     return { kind: 'consentname', you: "This consent form isn't for you." };
+  if (att.consent && (has('consent.guardian', 'id.name') || has('consent.guardian', 'consent.child') || has('consent.guardian', 'ticket.name')) && att.consent.guardian === att.consent.child)
+    return { kind: 'consentself', you: "You've signed your own consent form." };
   if (att.consent && has('consent.date', 'clock') && att.consent.date !== today)
     return { kind: 'consentdate', you: "This consent form isn't dated today." };
   if (t.kind === 'pass' && (has('ticket.name', 'book.guestlist') || has('ticket.type', 'book.guestlist')) && !onGuestList(day, t.name, t.role))

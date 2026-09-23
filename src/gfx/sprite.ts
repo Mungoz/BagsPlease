@@ -124,6 +124,59 @@ export function clothSprite(id: string, color: string): { url: string; w: number
   return { url, w, h };
 }
 
+// Sergeant the springer spaniel, for the booth window.
+const DOG_STAND = [
+  '...........kkk....',
+  '..........knnnk...',
+  '..........knknnkk.',
+  '..k.......knnnnnNk',
+  '.kNk......kwnnkkk.',
+  '..kNkkkkkkkwwnk...',
+  '...kwwnnwwwwnnk...',
+  '...kwwnnnwwwwwk...',
+  '...kwwwnnnwwwk....',
+  '...kwk.kwk.kwk....',
+  '...kwk.kwk.kwk....',
+  '...kkk.kkk.kkk....',
+];
+const DOG_SIT = [
+  '......kkk.....',
+  '.....knnnk....',
+  '.....knknnkk..',
+  '.....knnnnnNk.',
+  '....kwwnnkkk..',
+  '...kwwwnnk....',
+  '..kwwwwwwk....',
+  '.kNkwwwwwk....',
+  '..kkwwnnwk....',
+  '...kwwkwwk....',
+  '...kkk.kkk....',
+];
+
+export function dogSprite(sit: boolean): string {
+  const key = `dog:${sit}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const rows = sit ? DOG_SIT : DOG_STAND;
+  const c = document.createElement('canvas');
+  c.width = 18;
+  c.height = 12;
+  const ctx = c.getContext('2d')!;
+  const ox = Math.floor((18 - Math.max(...rows.map((r) => r.length))) / 2);
+  const oy = 12 - rows.length;
+  rows.forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      const col = PALETTE[ch];
+      if (!col) return;
+      ctx.fillStyle = col;
+      ctx.fillRect(ox + x, oy + y, 1, 1);
+    }),
+  );
+  const url = c.toDataURL();
+  cache.set(key, url);
+  return url;
+}
+
 export function spriteImg(id: string, scale = 3, cls = 'sprite'): HTMLImageElement {
   const img = new Image();
   img.src = itemSprite(id);

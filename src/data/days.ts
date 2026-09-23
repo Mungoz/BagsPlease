@@ -260,7 +260,7 @@ export const DAYS: DayDef[] = [
     newRules: ['consent', 'bag_alcohol', 'bag_gadgets'],
     memo: [
       'FOLK & FAMILY FAYRE. Children are welcome - the 18+ rule is SUSPENDED this weekend.',
-      'Under-18s must hand you a GUARDIAN CONSENT FORM with their name, dated today.',
+      'Under-18s must hand you a GUARDIAN CONSENT FORM: their name, signed by a parent (not by the kid - they try), dated today.',
       'The Fayre is alcohol-free and gadget-free: confiscate outside alcohol, laser pointers, selfie sticks and drones.',
     ],
     headlines: [
@@ -412,7 +412,7 @@ export const DAYS: DayDef[] = [
     newRules: ['consent', 'replicas'],
     memo: [
       'FIELDCON COMIC & COSPLAY. All ages again - consent forms are BACK for under-18s.',
-      'REPLICA WEAPONS: metal swords and realistic guns get confiscated. Foam swords, wands and bright plastic water pistols are fine.',
+      'PROP WEAPONS: heavy metal cosplay props (swords, ray guns) get confiscated. Foam swords, wands and plastic water pistols are fine. Real knives and guns: CALL POLICE, as always.',
       "Real knives are still real knives. Yes, even if he says he's a pirate.",
     ],
     headlines: [

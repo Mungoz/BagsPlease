@@ -886,6 +886,16 @@ const S = {
     'kddk........',
     'kkkk........',
   ],
+  rayGun: [
+    '....kkkkkkkk',
+    '..kkGGGGGGGk',
+    'kkcckGwGGGkk',
+    'kcckkGGGkkk.',
+    'kkk.kGGk....',
+    '....kGGk....',
+    '....kbbk....',
+    '....kkkk....',
+  ],
   waterPistol: [
     'kkkkkkkkkkkk',
     'kbbbbbbbbbbk',
@@ -948,7 +958,7 @@ const defs: ItemDef[] = [
 
   { id: 'knife', name: 'Folding knife', group: 'weapon', sprite: S.knife },
   { id: 'knuckles', name: 'Knuckle-duster', group: 'weapon', sprite: S.knuckles },
-  { id: 'baton', name: 'Telescopic baton', group: 'weapon', sprite: S.baton },
+  { id: 'gun', name: 'Handgun (loaded)', group: 'weapon', sprite: S.blaster },
 
   { id: 'pills', name: 'Baggie of pills', group: 'drug', sprite: S.pills },
   { id: 'powder', name: 'Baggie of white powder', group: 'drug', sprite: S.powder },
@@ -984,8 +994,8 @@ const defs: ItemDef[] = [
   { id: 'lantern', name: 'Sky lantern', group: 'flame', sprite: S.lantern },
   { id: 'crystal', name: 'Healing crystal (allegedly)', group: 'safe', sprite: S.crystal },
 
-  { id: 'katana', name: 'Replica katana (metal, sharp-ish)', group: 'replica', sprite: S.katana },
-  { id: 'blaster', name: 'Replica pistol (very realistic)', group: 'replica', sprite: S.blaster },
+  { id: 'katana', name: 'Cosplay sword (metal prop, blunt)', group: 'replica', sprite: S.katana },
+  { id: 'blaster', name: 'Cosplay ray gun (heavy metal prop)', group: 'replica', sprite: S.rayGun },
   { id: 'foamSword', name: 'Foam sword', group: 'safe', sprite: S.foamSword },
   { id: 'wand', name: 'Wizard wand (a stick)', group: 'safe', sprite: S.wand },
   { id: 'waterPistol', name: 'Water pistol (bright blue plastic)', group: 'safe', sprite: S.waterPistol },

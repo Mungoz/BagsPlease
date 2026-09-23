@@ -100,7 +100,7 @@ export function consentEl(c: Consent): HTMLElement {
   el.innerHTML = `
     <div class="cf-head">GUARDIAN CONSENT FORM</div>
     <div class="row"><label>CHILD</label>${f('consent.child', c.child)}</div>
-    <div class="row"><label>GUARDIAN</label><span>${esc(c.guardian)}</span></div>
+    <div class="row"><label>GUARDIAN</label>${f('consent.guardian', c.guardian)}</div>
     <div class="row"><label>PHONE</label><span>${esc(c.phone)}</span></div>
     <div class="row"><label>DATE</label>${f('consent.date', fmtNumeric(c.date))}</div>
     <div class="cf-sig">${esc(c.guardian.split(' ')[0])} ~~</div>`;
@@ -381,7 +381,7 @@ function docsPage(day: DayDef): HTMLElement {
     <p>Ticket name, event and dates must be correct. ${day.rules.includes('seal') ? 'Hologram seal must match the TODAY page.' : ''}</p>
     ${id ? `<div class="rb-sub">ACCEPTED PHOTO ID</div><p class="f" data-field="book.idtypes">${VALID_ID_TYPES.join(' / ')} only. Library cards, student cards, gym passes etc. are NOT ID.</p>` : '<p>No ID required yet.</p>'}
     ${day.rules.includes('medication') ? '<div class="rb-sub">PRESCRIPTIONS</div><p>Patient name = attendee. Medicine = bottle label. In date.</p>' : ''}
-    ${day.rules.includes('consent') ? '<div class="rb-sub">CONSENT FORMS</div><p>Child name = their ID. Dated today.</p>' : ''}
+    ${day.rules.includes('consent') ? '<div class="rb-sub">CONSENT FORMS</div><p>Child name = their ID. Signed by a parent, not the child. Dated today.</p>' : ''}
     ${day.rules.includes('guestlist') ? '<div class="rb-sub">PASSES</div><p>Name on pass must be on the Guest List with the same pass type, and match photo ID.</p>' : ''}
     <div class="rb-sub">CONTROLS</div>
     <p>Drag papers around. Stamp tray: yellow STAMP tab on the right edge (or press S). Hand papers back: drag to the window. Magnifier / SPACE: inspect mode. M: mute.</p>`;

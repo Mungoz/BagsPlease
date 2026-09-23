@@ -292,6 +292,7 @@ export const EXCUSES: Record<string, string[]> = {
   rxexpired: ['I still need them though!', 'The pills are still fine.', "I've been busy, OK?"],
   rxmissing: ["I need those! They're for my anxiety.", 'I left the note at home.', "They're just my tablets."],
   consentname: ["It's my brother's form. Same parents though.", 'Mum filled it in wrong.', "That's my nickname."],
+  consentself: ["My mum said I could sign it for her. She was busy.", "I'm very mature for my age.", "I'm my own guardian. Spiritually.", "It's legally binding. I checked. On TikTok."],
   consentdate: ['Mum signed it yesterday.', "It's the same weekend!", 'Does the date really matter?'],
   guestlist: ["I'm definitely on the list. Check again.", 'Do you know who I am?', 'Must be a mistake. Call my agent.', "I'm on the list in spirit."],
   camping: ["It's just a little chair!", 'My back is bad. I need that chair.', "Can't I just sit on it for a bit?"],

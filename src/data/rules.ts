@@ -17,7 +17,7 @@ export const RULES: Record<RuleId, RuleDef> = {
     text: "Ticket must be for TODAY'S event and valid on today's date. Day tickets: that date only. Weekend/Camping/VIP: any day of the event.",
     action: 'DENY',
   },
-  bag_weapons: { id: 'bag_weapons', title: 'Weapons', text: 'Knives, knuckle-dusters, batons. Binning them does not make it OK.', action: 'DENY', group: 'weapon' },
+  bag_weapons: { id: 'bag_weapons', title: 'Weapons', text: 'Knives, knuckle-dusters, guns. Binning them does not make it OK.', action: 'DENY', group: 'weapon' },
   bag_glass: { id: 'bag_glass', title: 'Glass', text: 'Glass bottles, jars and glass perfume bottles.', action: 'CONFISCATE', group: 'glass' },
   id_required: {
     id: 'id_required',
@@ -52,7 +52,7 @@ export const RULES: Record<RuleId, RuleDef> = {
   consent: {
     id: 'consent',
     title: 'Under 18s',
-    text: "Under-18s are welcome but must hand over a Guardian Consent Form: child's name must match their ID and the form must be dated TODAY.",
+    text: "Under-18s are welcome but must hand over a Guardian Consent Form: child's name must match their ID, it must be signed by a parent or guardian (not the kid!) and dated TODAY.",
     action: 'DENY',
   },
   bag_gadgets: { id: 'bag_gadgets', title: 'Nuisance gadgets', text: 'Laser pointers, selfie sticks, drones.', action: 'CONFISCATE', group: 'gadget' },
@@ -106,7 +106,7 @@ export const RULES: Record<RuleId, RuleDef> = {
   replicas: {
     id: 'replicas',
     title: 'Replica weapons',
-    text: 'Metal replica swords and realistic replica guns. Foam swords, wands and bright plastic water pistols are fine. Real knives are still DENY / CALL POLICE.',
+    text: 'Heavy METAL costume props (swords, ray guns) get confiscated. Foam swords, wands and plastic water pistols are fine. REAL weapons (knives, guns) are still CALL POLICE.',
     action: 'CONFISCATE',
     group: 'replica',
   },

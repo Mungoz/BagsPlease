@@ -45,6 +45,8 @@ function person(c: GenCtx, first: string, last: string, age: number, face: FaceP
   a.face = { ...face };
   if (a.id) a.id.photo = photoOf(face);
   a.story = `${first} ${last}`;
+  // Story characters are not a festival crowd type, even if the generator rolled one.
+  delete a.seenKey;
   return a;
 }
 
@@ -645,7 +647,7 @@ export const SCRIPTS: Record<number, Script[]> = {
       at: 4,
       make: (c) => {
         const a = person(c, 'Darren', 'Pike', 31, { ...FACES.dazza, hat: 3, hatColor: 3, hair: 7, beard: 3 });
-        a.bag = [mkItem('wand'), mkItem('katana', { name: 'Replica sword "Dazzlesting" (metal)' }), mkItem('crisps')];
+        a.bag = [mkItem('wand'), mkItem('katana', { name: 'Cosplay sword "Dazzlesting" (metal prop)' }), mkItem('crisps')];
         a.lines = {
           greet: ["I have come as DAZZALF THE GREY.", 'You shall not... hang on, is my ticket alright?'],
           confiscate: 'Dazzalf needs his sword! ...Fine. The wand is more powerful anyway.',

@@ -63,7 +63,7 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
   const face = randomFace(rng, { pres, old: age >= 58, young: age < 20, wild: o.wild ?? WILD[ev.genre] });
   if (ev.genre === 'metal' && rng.chance(0.6)) face.shirt = 2;
   // A third of adults are one of this festival's own breed of weirdo.
-  const types = ARCHETYPES.filter((t) => t.genres.includes(ev.genre) && !ctx.used?.has('arch:' + t.id));
+  const types = ARCHETYPES.filter((t) => t.genres.includes(ev.genre) && !ctx.used?.has('arch:' + t.id) && !ctx.state.flags.seen?.includes('arch:' + t.id));
   const arch = age >= 18 && types.length && rng.chance(0.35) ? rng.pick(types) : null;
   if (arch) ctx.used?.add('arch:' + arch.id);
   if (arch?.face) Object.assign(face, arch.face);
@@ -97,6 +97,7 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
     dogAlert: false,
     bribe: 0,
     lines: arch ? archetypeLines(rng, arch) : personality(rng, ev.genre, age, ctx.used),
+    seenKey: arch ? 'arch:' + arch.id : undefined,
   };
 
   if (day.rules.includes('id_required')) {
@@ -156,7 +157,9 @@ function personality(rng: Rng, genre: Genre, age: number, used?: Set<string>) {
 }
 
 function mkConsent(rng: Rng, att: Attendee, date: DayNum) {
-  const parentFirst = rng.pick([...FIRST.f, ...FIRST.m]);
+  // The parent never shares the child's first name (that would read as a self-signed form).
+  let parentFirst = rng.pick([...FIRST.f, ...FIRST.m]);
+  while (parentFirst === att.first) parentFirst = rng.pick([...FIRST.f, ...FIRST.m]);
   return { child: att.id?.name ?? fullName(att), guardian: `${parentFirst} ${att.last}`, phone: `07${rng.int(100, 999)} ${rng.int(100000, 999999)}`, date };
 }
 
@@ -374,6 +377,16 @@ export const VIOLATIONS: Violation[] = [
       makeMinor(a, c, 10, 17);
       a.consent = mkConsent(c.rng, a, c.day.date);
       a.consent.child = `${c.rng.pick([...FIRST.m, ...FIRST.f])} ${a.last}`;
+    },
+  },
+  {
+    kind: 'consentSelf',
+    rule: 'consent',
+    w: 1,
+    apply: (a, c) => {
+      makeMinor(a, c, 12, 17);
+      a.consent = mkConsent(c.rng, a, c.day.date);
+      a.consent.guardian = a.id?.name ?? fullName(a);
     },
   },
   {
