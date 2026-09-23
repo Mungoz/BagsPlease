@@ -120,12 +120,12 @@ const R1: RuleId[] = ['ticket_valid'];
 const R2: RuleId[] = [...R1, 'bag_weapons', 'bag_glass', 'bag_drugs'];
 const R3: RuleId[] = [...R2, 'id_required', 'age_18'];
 const R4: RuleId[] = [...R3, 'bag_aerosol', 'medication', 'detain'];
-const R5: RuleId[] = [...R4, 'bag_unsealed'];
+const R5: RuleId[] = R4;
 const R6: RuleId[] = [...without(R5, 'age_18'), 'consent', 'bag_alcohol', 'bag_gadgets'];
 const R7: RuleId[] = [...R6, 'camping'];
 const R8: RuleId[] = [...R7, 'vegan'];
 const R9: RuleId[] = [...R8, 'flames'];
-const R10: RuleId[] = [...without(R9, 'consent', 'vegan', 'flames'), 'age_18', 'k9', 'bag_pyro', 'bag_spikes'];
+const R10: RuleId[] = [...without(R9, 'consent', 'vegan', 'flames', 'bag_gadgets', 'camping'), 'age_18', 'k9', 'bag_pyro', 'bag_spikes'];
 const R11: RuleId[] = [...R10, 'seal', 'ticket_code'];
 const R13: RuleId[] = [...without(R11, 'age_18'), 'consent', 'replicas'];
 const R15: RuleId[] = [...R11, 'guestlist'];
@@ -150,7 +150,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.35,
     doubleRate: 0,
     seconds: 90,
-    rent: 10,
+    rent: 15,
     hints: [
       'Click the megaphone (NEXT!) to call the first person in the queue.',
       "Compare the ticket's EVENT and DATES with the TODAY page of your rulebook.",
@@ -178,7 +178,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.4,
     doubleRate: 0,
     seconds: 120,
-    rent: 10,
+    rent: 15,
     hints: [
       'Bags arrive ZIPPED. Click the zip to open, then drag clothes OUT of the bag - things hide underneath.',
       'Check the side pocket too! Drag prohibited items into the AMNESTY BIN (bottom left).',
@@ -205,7 +205,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.45,
     doubleRate: 0.05,
     seconds: 150,
-    rent: 10,
+    rent: 15,
     hints: [
       'Every attendee now hands over photo ID. Compare the photo with the face at your window.',
       'INSPECT mode: click the magnifier, then click two fields that disagree (e.g. ticket name and ID name).',
@@ -230,7 +230,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.45,
     doubleRate: 0.08,
     seconds: 180,
-    rent: 10,
+    rent: 15,
     hints: ['CALL POLICE is the blue button under your window: use it for drugs and weapons.', 'Prescription pill bottles have a label. The note must name the same medicine and the same person.'],
   },
   {
@@ -238,10 +238,10 @@ export const DAYS: DayDef[] = ([
     date: mkDate(2026, 6, 28),
     event: BSL,
     rules: R5,
-    newRules: ['bag_unsealed'],
+    newRules: [],
     memo: [
       'The police made nine arrests yesterday. The Chief Inspector sends his thanks, and a tin of Roses.',
-      'Water bottles must be factory sealed - people have been topping them up with vodka. Opened bottles go in the bin.',
+      'No new rules today. Same as yesterday - work on your speed.',
       'Drugs and weapons: still CALL POLICE.',
     ],
     headlines: [
@@ -252,7 +252,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.5,
     doubleRate: 0.1,
     seconds: 195,
-    rent: 10,
+    rent: 15,
     hints: [],
   },
   {
@@ -274,7 +274,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.5,
     doubleRate: 0.1,
     seconds: 210,
-    rent: 10,
+    rent: 15,
     hints: ['Kids need a Guardian Consent Form. The age rule is off for this event - check the TODAY page.'],
   },
   {
@@ -295,7 +295,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.5,
     doubleRate: 0.12,
     seconds: 225,
-    rent: 10,
+    rent: 15,
     hints: [],
   },
   {
@@ -317,7 +317,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.5,
     doubleRate: 0.12,
     seconds: 240,
-    rent: 15,
+    rent: 20,
     hints: ['Meat is banned today. The tooltips tell a sausage roll from a vegan "sausage" roll.'],
   },
   {
@@ -339,7 +339,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.55,
     doubleRate: 0.14,
     seconds: 250,
-    rent: 15,
+    rent: 20,
     hints: [],
   },
   {
@@ -349,7 +349,7 @@ export const DAYS: DayDef[] = ([
     rules: R10,
     newRules: ['age_18', 'k9', 'bag_pyro', 'bag_spikes'],
     memo: [
-      'IRONCLAD METAL FEST. 18+ again. Consent forms mean nothing this weekend. Meat is allowed again. Loudly.',
+      'IRONCLAD METAL FEST. 18+ again. Consent forms mean nothing this weekend. Meat, candles, gadgets and camping gear are all fine again. Loudly.',
       'Meet SERGEANT, our sniffer dog. If he SITS, PAT-DOWN the attendee before you decide.',
       'Flares and fireworks: DENY. Spiked jewellery and heavy chains: confiscate.',
     ],
@@ -361,7 +361,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.55,
     doubleRate: 0.15,
     seconds: 260,
-    rent: 15,
+    rent: 20,
     hints: ['Watch the dog next to your booth. If Sergeant sits, press PAT-DOWN before deciding.'],
   },
   {
@@ -383,7 +383,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.55,
     doubleRate: 0.18,
     seconds: 270,
-    rent: 15,
+    rent: 20,
     hints: [],
   },
   {
@@ -404,7 +404,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.6,
     doubleRate: 0.2,
     seconds: 280,
-    rent: 15,
+    rent: 20,
     hints: [],
   },
   {
@@ -426,7 +426,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.55,
     doubleRate: 0.18,
     seconds: 290,
-    rent: 15,
+    rent: 20,
     hints: ['Cosplay props: foam is fine, metal is not. Hover items to check.'],
   },
   {
@@ -444,7 +444,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.6,
     doubleRate: 0.2,
     seconds: 300,
-    rent: 15,
+    rent: 20,
     hints: [],
   },
   {
@@ -466,7 +466,7 @@ export const DAYS: DayDef[] = ([
     errorRate: 0.55,
     doubleRate: 0.2,
     seconds: 320,
-    rent: 15,
+    rent: 20,
     guestList: [
       { name: 'VEX', real: 'Kevin Budd', role: 'ARTIST' },
       { name: 'The Paper Lanterns', real: 'Ada Lloyd', role: 'ARTIST' },

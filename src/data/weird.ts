@@ -127,6 +127,27 @@ export const WEIRD_MEMOS: Record<number, string> = {
  * Control's radio messages, by day. `at` is how far through the shift (0 = gates open).
  * They start almost normal and get steadily wronger.
  */
+/** Things Supervisor Kettle says (or does) once the field gets into her. [min weird level, line, only after your answer?] */
+export const KETTLE_ASIDES: [number, string, boolean?][] = [
+  [2, '(She taps her clipboard. It makes no sound.)'],
+  [2, "Have you seen my other clipboard? It's identical to this one. I've had it since 1987."],
+  [2, "(Her hi-vis is damp. It hasn't rained.)"],
+  [2, "I've been doing spot checks at this gate for a very long time. Longer than the gate."],
+  [2, '(She blinks. Only one eye.)'],
+  [2, "(She hasn't breathed since she got here. You're almost sure.)"],
+  [3, "(She said the answer along with you. Every word. Before you'd said it.)", true],
+  [3, "Don't mind the soil on my shoes. Everyone's got soil on their shoes."],
+  [3, '(She keeps looking at the space just behind your left shoulder.)'],
+  [3, 'I used to work Gate 3, you know. Before I was promoted. Upwards. Or downwards.'],
+  [3, '(For a moment she has too many fingers on the clipboard. Then the right number.)'],
+  [4, 'The field asked me to check on you. The office. I mean the office asked.'],
+  [4, '(She smiles. It takes a long time to finish.)', true],
+  [4, "You'll make a wonderful Gate 3. You already are."],
+  [4, "(Her clipboard has one word on it, written over and over. It's your name.)"],
+  [5, '(She is standing much closer to the glass than a person can stand.)'],
+  [5, "We're all so proud of you. Underneath."],
+];
+
 export const WEIRD_RADIO: Record<number, { at: number; text: string }[]> = {
   2: [
     { at: 0.05, text: "Gate 3, radio check. ...Gate 3? We don't have a Gate 3 on the plan. Must be a typo. Carry on." },

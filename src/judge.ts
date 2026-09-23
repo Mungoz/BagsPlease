@@ -20,13 +20,27 @@ export function itemVerdict(item: BagItem, att: Attendee, day: DayDef): Verdict 
   if (!rule || !day.rules.includes(rule)) return 'ok';
   if (g === 'weapon' || g === 'drug') return day.rules.includes('detain') ? 'detain' : 'deny';
   if (g === 'pyro') return 'deny';
-  if (g === 'medication') {
-    const rx = att.rx;
-    const ok = !!rx && rx.name === (att.id?.name ?? fullName(att)) && rx.med === item.label && rx.expiry >= day.date;
-    return ok ? 'ok' : 'confiscate';
-  }
+  if (g === 'medication') return rxProblem(item, att, day) ? 'confiscate' : 'ok';
   if (g === 'camping') return att.ticket.kind === 'ticket' && att.ticket.type === 'CAMPING' ? 'ok' : 'confiscate';
   return 'confiscate';
+}
+
+/** Why these pills aren't covered by a prescription (null = they are). */
+export function rxProblem(item: BagItem, att: Attendee, day: DayDef): string | null {
+  const rx = att.rx;
+  if (!rx) return 'no prescription';
+  if (rx.name !== (att.id?.name ?? fullName(att))) return "prescription is in someone else's name";
+  if (rx.med !== item.label) return `prescription is for ${rx.med}, not ${item.label}`;
+  if (rx.expiry < day.date) return 'prescription expired';
+  return null;
+}
+
+/** Why an item is banned, for rules whose ban depends on the paperwork (null = the rule is the reason). */
+function whyBanned(item: BagItem, att: Attendee, day: DayDef): string | null {
+  const g = ITEMS[item.def].group;
+  if (g === 'medication') return rxProblem(item, att, day);
+  if (g === 'camping') return 'no CAMPING ticket';
+  return null;
 }
 
 export function ageToday(att: Attendee, day: DayDef): number {
@@ -111,14 +125,18 @@ export function evaluate(att: Attendee, day: DayDef, decision: Decision, removed
       if (left.length) {
         // Say where it was, so it's clear this isn't the item you already binned.
         const it = left[0].i;
-        const where = att.body.includes(it) ? ' (hidden on them)' : it.pocket ? ' (still in the side pocket)' : ' (still in the bag)';
-        cites.push(`Admitted with prohibited item: ${itemName(it).toLowerCase()}${where}`);
+        const where = att.body.includes(it) ? 'hidden on them' : it.pocket ? 'still in the side pocket' : 'still in the bag';
+        const why = whyBanned(it, att, day);
+        cites.push(`Admitted with prohibited item: ${itemName(it).toLowerCase()} (${why ? why + ', ' : ''}${where})`);
       }
       if (att.dogAlert && !patted && day.rules.includes('k9')) cites.push('Ignored K9 alert: no pat-down');
     }
   } else if (decision === 'deny') {
-    if (!shouldDeny)
-      cites.push(confiscatable.length ? 'Wrongful denial: confiscate the item, then admit' : 'Wrongful denial: attendee was entitled to entry');
+    if (!shouldDeny && confiscatable.length) {
+      const it = confiscatable[0].i;
+      const why = whyBanned(it, att, day);
+      cites.push(`Wrongful denial: confiscate the ${itemName(it).toLowerCase()}${why ? ` (${why})` : ''}, then admit`);
+    } else if (!shouldDeny) cites.push('Wrongful denial: attendee was entitled to entry');
     else if (detainable) cites.push(`Should have called the police, not just denied: carrying ${itemName(bad.find((x) => x.v === 'detain')!.i).toLowerCase()} (weapons & drugs = CALL POLICE)`);
   } else if (!detainable) {
     cites.push('Wasted police time: nothing illegal on them');

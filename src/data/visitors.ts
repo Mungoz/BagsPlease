@@ -1,11 +1,12 @@
 import { baseAttendee, mkItem, type GenCtx } from '../gen';
 import type { FaceParams, Presentation } from '../gfx/portrait';
 import { itemVerdict } from '../judge';
-import type { Attendee, Choice, StoryApi } from '../types';
+import type { Attendee, Choice, RuleId, StoryApi } from '../types';
 import type { DayDef, Genre } from './days';
-import { EVENTS } from './days';
-import { ITEMS, itemsInGroup } from './items';
+import { DAYS, EVENTS } from './days';
+import { itemsInGroup } from './items';
 import { RULES } from './rules';
+import { KETTLE_ASIDES } from './weird';
 
 // People who turn up at the window but aren't trying to get in: supervisors, police, lost kids,
 // burger vans... They talk, you pick a reply, they wander off. They don't count as processed.
@@ -40,46 +41,182 @@ const better = (k: 'hunger' | 'energy' | 'hygiene' | 'morale') => (api: StoryApi
 export const KETTLE: Partial<FaceParams> = { skin: 0, hair: 6, hairStyle: 5, headW: 9, headH: 11, jaw: 2, eyeColor: 1, brow: 2, mouth: 0, glasses: 2, hiVis: true, hat: 0, shades: 0, paint: 0 };
 export const POLICE: Partial<FaceParams> = { hiVis: true, hat: 2, hatColor: 1, shades: 0, paint: 0, feather: false };
 
-/** Supervisor Kettle's pop quiz about one of today's rules. */
+interface Quiz {
+  /** Season-unique id: the same question never comes round twice. */
+  key: string;
+  /** The rule it drills (new rules get asked about more). */
+  rule: RuleId;
+  q: string;
+  answer: string;
+  opts: string[];
+  /** Kettle's explanation when you get it wrong. */
+  why: string;
+}
+
+const IN = 'LET THEM IN';
+const OUT = 'DENY ENTRY';
+
+/** Every question Kettle could ask today. */
+function quizBank(c: GenCtx): Quiz[] {
+  const { rng, day } = c;
+  const r = day.rules;
+  const has = (id: RuleId) => r.includes(id);
+  const police = has('detain');
+  const out: Quiz[] = [];
+  const person = (key: string, rule: RuleId, q: string, answer: string, why: string, extra = 'ASK NICELY') =>
+    out.push({ key, rule, q, answer, why, opts: rng.shuffle([IN, OUT, extra]) });
+
+  // Items: what happens to this one today? Includes things that were banned yesterday but aren't now.
+  const itemOpts = police ? ['LET IT IN', 'CONFISCATE IT', 'DENY ENTRY', 'CALL POLICE'] : ['LET IT IN', 'CONFISCATE IT', 'DENY ENTRY'];
+  const probe = baseAttendee(c, { noBag: true });
+  const said = { ok: 'LET IT IN', confiscate: 'CONFISCATE IT', deny: 'DENY ENTRY', detain: 'CALL POLICE' } as const;
+  const prev = DAYS[day.n - 2];
+  const itemRules = [...r, ...(prev?.rules ?? []).filter((x) => !r.includes(x))];
+  for (const rule of itemRules) {
+    const g = RULES[rule].group;
+    if (!g || g === 'medication' || g === 'camping') continue;
+    for (const item of itemsInGroup(g)) {
+      const verdict = itemVerdict(mkItem(item.id), probe, day);
+      const name = item.name.toLowerCase();
+      out.push({
+        key: `item:${item.id}:${verdict}`,
+        rule,
+        q: `In someone's bag: ${name}. What do we do?`,
+        answer: said[verdict],
+        opts: itemOpts,
+        why:
+          verdict === 'ok'
+            ? `That's not banned at this event. Check the TODAY page.`
+            : verdict === 'detain'
+              ? 'Drugs and weapons: CALL POLICE. Denying them just sends them round the back.'
+              : verdict === 'deny'
+                ? `${RULES[rule].title}: they don't come in at all.`
+                : 'Bin it, then let them in.',
+      });
+    }
+  }
+
+  if (has('ticket_valid')) {
+    person('ticket:wrongevent', 'ticket_valid', "Their ticket's for a different festival. Nice ticket, though.", OUT, 'The ticket has to be for THIS event, valid TODAY.');
+    person('ticket:tomorrow', 'ticket_valid', "Their ticket is a day ticket for tomorrow. They're keen.", OUT, 'Not valid today means not valid today.');
+  }
+  if (has('id_required')) {
+    person('id:none', 'id_required', "Valid ticket, but they've left their photo ID in the car.", OUT, 'No photo ID, no entry.', 'TAKE THEIR WORD');
+    person('id:expired', 'id_required', 'Their driving licence expired last month. Same face, though.', OUT, 'Expired ID is not valid ID. Check the dates.');
+    person('id:match', 'id_required', 'Ticket name and ID name match, photo matches, all in date. Anything else?', IN, "If it all checks out, they're in. Don't invent problems.");
+  }
+  if (has('age_18')) {
+    person('age:yesterday', 'age_18', 'Their 18th birthday was yesterday. Everything else is fine.', IN, '18 yesterday means 18 today. Do the maths from the date of birth.');
+    person('age:tomorrow', 'age_18', 'They turn 18 tomorrow. "It\'s basically today," they say.', OUT, "Tomorrow isn't today. Under 18 means DENY.");
+  }
+  if (has('consent')) {
+    const CF = 'CHECK CONSENT FORM';
+    person('consent:self', 'consent', 'A 13-year-old with a consent form. The guardian signature matches the kid\'s own name.', OUT, "A kid can't sign their own consent form. It must be a parent.", CF);
+    person('consent:none', 'consent', 'A 15-year-old with a valid ticket and no consent form.', OUT, 'Under 18s need a consent form today, dated today, signed by a parent.', CF);
+    person('consent:good', 'consent', "A 10-year-old. Consent form: her name, signed by her mum, dated today.", IN, 'All three checks pass: right child, a parent signed it, dated today.', CF);
+    person('consent:adult', 'consent', "A 34-year-old with no consent form. Valid ticket and ID.", IN, 'Consent forms are only for under 18s.', CF);
+  }
+  if (has('medication')) {
+    const pills = ['LET IT IN', 'CONFISCATE IT', 'DENY ENTRY'];
+    out.push({ key: 'rx:expired', rule: 'medication', q: 'Prescription pills. The note has their name and the right medicine, but it ran out last week.', answer: 'CONFISCATE IT', opts: pills, why: 'An expired prescription is no prescription. Bin the pills, let them in.' });
+    out.push({ key: 'rx:name', rule: 'medication', q: "Prescription pills. The note is in their brother's name.", answer: 'CONFISCATE IT', opts: pills, why: "It has to be THEIR name on the prescription. Bin the pills, let them in." });
+    out.push({ key: 'rx:good', rule: 'medication', q: 'Prescription pills. Their name, same medicine as the bottle, in date.', answer: 'LET IT IN', opts: pills, why: 'Name, medicine and date all match: those pills are allowed.' });
+  }
+  if (has('camping')) {
+    const gear = ['LET IT IN', 'CONFISCATE IT', 'DENY ENTRY'];
+    out.push({ key: 'camp:day', rule: 'camping', q: 'Someone with a DAY ticket and a folding camping chair.', answer: 'CONFISCATE IT', opts: gear, why: 'Camping gear needs a CAMPING ticket. Bin the chair, let them in.' });
+    out.push({ key: 'camp:ok', rule: 'camping', q: 'Someone with a CAMPING ticket and a pop-up tent.', answer: 'LET IT IN', opts: gear, why: "A CAMPING ticket means camping gear is fine." });
+  }
+  if (has('k9'))
+    out.push({ key: 'k9:sit', rule: 'k9', q: 'Sergeant sits down next to someone. First thing you do?', answer: 'PAT-DOWN', opts: rng.shuffle(['PAT-DOWN', IN, 'GIVE HIM A BISCUIT']), why: "When the dog sits, you PAT-DOWN before deciding. Biscuits after." });
+  if (has('seal')) {
+    const seals = rng.shuffle([...new Set(EVENTS.map((e) => e.seal))].filter((s) => s !== day.event.seal)).slice(0, 2);
+    out.push({ key: `seal:${day.event.code}`, rule: 'seal', q: "What colour is today's hologram seal?", answer: day.event.seal, opts: rng.shuffle([day.event.seal, ...seals]), why: "It's on the TODAY page of your rulebook. Every day." });
+  }
+  if (has('ticket_code')) {
+    const codes = rng.shuffle(EVENTS.map((e) => e.code).filter((x) => x !== day.event.code)).slice(0, 2);
+    out.push({ key: `code:${day.event.code}`, rule: 'ticket_code', q: "Today's ticket numbers should start with...?", answer: day.event.code + '-', opts: rng.shuffle([day.event.code, ...codes]).map((x) => x + '-'), why: 'The event code is on the TODAY page. Anything else is a fake.' });
+  }
+  if (has('guestlist'))
+    person('guest:missing', 'guestlist', "An ARTIST pass. Their name isn't on the guest list.", OUT, 'Passes only count if the name is on the GUEST LIST and matches their ID.', 'ASK FOR AN AUTOGRAPH');
+  if (has('field_name'))
+    person('field:name', 'field_name', 'Someone in the queue says they know your name. What do we do?', OUT, "The page says DENY. I didn't write that page. But it's right.", 'SAY YOUR NAME BACK');
+  if (has('hollow'))
+    person('field:hollow', 'hollow', 'Someone with no eyes. Valid ticket, valid ID.', OUT, 'The hollow-eyed are already inside. They cannot also be out here.', 'LOOK CLOSER');
+  return out;
+}
+
+const KETTLE_HELLOS = [
+  'Supervisor Kettle. Spot check.',
+  "Kettle again. Don't look so thrilled. Quick one.",
+  'Clipboard time. Eyes on me, not the queue.',
+  "I'm doing my rounds. You're a round.",
+  'Pop quiz. No conferring with the dog.',
+  "Just passing. Well, not passing. Stopping. Question.",
+  "Big Col got this wrong this morning. Let's see about you.",
+];
+const KETTLE_HELLOS_ODD = [
+  'Spot check. Spot check. Spot check.',
+  "Kettle. You've always known me as Kettle.",
+  "I've been standing here a while. Question.",
+  'Supervisor Kettle. Supervisor. Kettle. Yes.',
+  "Don't look at the queue. Look at me. Question.",
+  "I came up through the floor. The stairs. I came up the stairs.",
+  'Hello, Gate 3. Hello. Question.',
+];
+
+/** Supervisor Kettle's spot check: one question about today's rules. */
 function kettleQuiz(c: GenCtx): Attendee {
   const { rng, day } = c;
-  const groups = day.rules.map((r) => RULES[r].group).filter((g): g is NonNullable<typeof g> => !!g && g !== 'medication' && g !== 'camping');
-  const police = day.rules.includes('detain');
-  let q: string;
-  let answer: string;
-  let opts: string[];
-  if (day.rules.includes('seal') && rng.chance(0.35)) {
-    q = "Pop quiz! What colour is today's hologram seal?";
-    answer = day.event.seal;
-    opts = rng.shuffle([...new Set([answer, ...rng.shuffle(EVENTS.map((e) => e.seal)).slice(0, 3)])]).slice(0, 3);
-    if (!opts.includes(answer)) opts[0] = answer;
-  } else if (groups.length) {
-    const g = rng.pick(groups);
-    const item = rng.pick(itemsInGroup(g));
-    const probe = baseAttendee(c, { noBag: true });
-    const v = itemVerdict(mkItem(item.id), probe, day);
-    answer = v === 'detain' ? 'CALL POLICE' : v === 'deny' ? 'DENY ENTRY' : v === 'confiscate' ? 'CONFISCATE IT' : 'LET IT IN';
-    q = `Pop quiz! Someone's got a ${ITEMS[item.id].name.toLowerCase()}. What do we do?`;
-    opts = ['LET IT IN', 'CONFISCATE IT', police ? 'CALL POLICE' : 'DENY ENTRY'];
-    if (!opts.includes(answer)) opts[2] = answer;
-  } else {
-    q = "Pop quiz! Somebody's ticket is for last year. What do we do?";
-    answer = 'DENY ENTRY';
-    opts = ['LET THEM IN', 'DENY ENTRY', 'ASK NICELY'];
+  const seen = new Set(c.state.flags.seen ?? []);
+  const fresh = quizBank(c).filter((q) => !seen.has('quiz:' + q.key) && !c.used?.has('quiz:' + q.key));
+  // Pick a rule first (today's new ones more often), then a question about it: items don't drown out the rest.
+  const rules = [...new Set(fresh.map((q) => q.rule))];
+  const newRules = rules.filter((r) => day.newRules.includes(r));
+  const rule = newRules.length && rng.chance(0.6) ? rng.pick(newRules) : rules.length ? rng.pick(rules) : null;
+  const pick: Quiz =
+    (rule ? rng.pick(fresh.filter((q) => q.rule === rule)) : null) ??
+    { key: 'ticket:lastyear', rule: 'ticket_valid', q: "Somebody's ticket is for last year. What do we do?", answer: OUT, opts: [IN, OUT, 'ASK NICELY'], why: 'Last year is not today.' };
+  c.used?.add('quiz:' + pick.key);
+  const right = day.weird >= 4 ? ['Correct.', 'Correct. You have always been good at this.', 'Correct. We will need you for a long time.'] : ['Correct. Have a biscuit. And two quid.', 'Correct! I knew there was a brain under that hi-vis.', 'Right answer. Carry on.'];
+  // From day 4 something is wrong with Kettle: an aside before the question, or tacked onto her reply.
+  const seenList = (c.state.flags.seen ??= []);
+  // Today's first visit always has one; later days prefer the worse ones.
+  const asides = KETTLE_ASIDES.map((_, i) => i).filter((i) => KETTLE_ASIDES[i][0] <= day.weird && !seenList.includes('kaside:' + i));
+  const worst = asides.filter((i) => KETTLE_ASIDES[i][0] >= day.weird - 1);
+  let aside = '';
+  let early = false;
+  if (day.weird >= 2 && asides.length && (!c.used?.has('kettle:odd') || rng.chance(0.3 + 0.2 * day.weird))) {
+    const i = rng.pick(worst.length ? worst : asides);
+    seenList.push('kaside:' + i);
+    c.used?.add('kettle:odd');
+    aside = KETTLE_ASIDES[i][1];
+    early = !KETTLE_ASIDES[i][2] && rng.chance(0.5);
   }
-  return visitor(c, {
+  const odd = day.weird >= 4 || (day.weird >= 3 && rng.chance(0.4));
+  const hellos = (odd ? KETTLE_HELLOS_ODD : KETTLE_HELLOS).filter((l) => !c.used?.has('hello:' + l));
+  const hello = rng.pick(hellos.length ? hellos : KETTLE_HELLOS);
+  c.used?.add('hello:' + hello);
+  const a = visitor(c, {
     first: 'Marjorie',
     last: 'Kettle',
     age: 57,
     pres: 'f',
-    face: KETTLE,
-    greet: ['Supervisor Kettle. Spot check.', q],
-    options: opts.map((o) => ({
+    face: { ...KETTLE, grin: day.weird >= 5 || (day.weird >= 3 && rng.chance(0.15 * day.weird)) },
+    greet: [hello, ...(early ? [aside] : []), pick.q],
+    options: pick.opts.map((o) => ({
       label: o,
-      reply: o === answer ? rng.pick(['Correct. Have a biscuit. And a fiver.', 'Correct! I knew there was a brain under that hi-vis.', 'Right answer. Carry on.']) : `Wrong. It's "${answer}". Read your rulebook.`,
-      apply: o === answer ? (api) => api.income("Kettle's pop quiz bonus", 5) : undefined,
+      reply: (o === pick.answer ? rng.pick(right) : `Wrong. It's "${pick.answer}". ${pick.why}`) + (aside && !early ? ' ' + aside : ''),
+      apply: o === pick.answer ? (api) => api.income("Kettle's spot check", 2) : undefined,
     })),
   });
+  a.seenKey = 'quiz:' + pick.key;
+  return a;
+}
+
+/** How many spot checks today: more as the days (and the rulebook) get longer. */
+export function quizCount(day: DayDef): number {
+  return day.n < 2 || day.n >= 99 ? 0 : day.n <= 4 ? 2 : day.n <= 9 ? 3 : 4;
 }
 
 const POLICE_TIPS = [
@@ -435,12 +572,12 @@ POOL.push(
 );
 
 /** A random visitor suitable for today. */
-// POOL[0] is Kettle's quiz (different question each time: once a day), POOL[1] is PC Okoro (story days only).
+// POOL[0] is Kettle's quiz and POOL[1] is PC Okoro: both are scheduled by the shift, never drawn at random.
 // Everyone else turns up at most once per season. Returns null once the pool runs dry.
 export function randomVisitor(c: GenCtx): Attendee | null {
   const seen = new Set(c.state.flags.seen ?? []);
   const ok = POOL.map((p, i) => ({ p, i })).filter(
-    ({ p, i }) => i !== 1 && (!p.when || p.when(c.day)) && (!p.genres || p.genres.includes(c.day.event.genre)) && !c.used?.has('visitor:' + i) && !seen.has('visitor:' + i),
+    ({ p, i }) => i > 1 && (!p.when || p.when(c.day)) && (!p.genres || p.genres.includes(c.day.event.genre)) && !c.used?.has('visitor:' + i) && !seen.has('visitor:' + i),
   );
   if (!ok.length) return null;
   // Festival-specific visitors get a good share, otherwise the general crowd drowns them out.

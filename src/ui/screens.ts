@@ -7,7 +7,7 @@ import { Scene } from '../gfx/scene';
 import { Rng } from '../rng';
 import { canFullscreen, isTouch, toggleFullscreen } from '../fullscreen';
 import { GOAL, MEALS, NIGHT_OPTIONS, SHOP, STAT_NAMES, type Meal, type NightChoice } from '../state';
-import type { GameState } from '../types';
+import type { GameState, RuleId } from '../types';
 import { h } from './docs';
 import type { ShiftResult } from './shift';
 
@@ -106,7 +106,18 @@ export function briefingScreen(g: GameState, onStart: () => void): HTMLElement {
   const news = day.headlines
     .map((x, i) => `<div class="news ${i === 0 ? 'lead' : ''}"><h3>${esc(x.title)}</h3><p>${esc(x.body)}</p></div>`)
     .join('');
-  const rules = day.newRules.map((r) => `<li><span class="act act-${RULES[r].action.toLowerCase()}">${RULES[r].action}</span> ${esc(RULES[r].title)}</li>`).join('');
+  // Every rule in force today (new ones flagged), and anything that stopped applying since yesterday.
+  const action = (id: RuleId) => ((id === 'bag_weapons' || id === 'bag_drugs') && day.rules.includes('detain') ? 'POLICE' : RULES[id].action);
+  const ruleTitle = (id: RuleId) => (id === 'consent' ? 'Kids: consent form' : RULES[id].title.replace('(handwritten) ', ''));
+  const recap = day.rules
+    .filter((r) => r !== 'detain')
+    .map((r) => {
+      const cls = [day.newRules.includes(r) ? 'new' : '', r === 'field_name' || r === 'hollow' ? 'hand' : ''].join(' ').trim();
+      return `<li class="${cls}"><span class="act act-${action(r).toLowerCase()}">${action(r)}</span>${esc(ruleTitle(r))}${day.newRules.includes(r) ? '<em>NEW</em>' : ''}</li>`;
+    })
+    .join('');
+  const prev = DAYS[g.day - 1];
+  const off = prev ? prev.rules.filter((r) => r !== 'detain' && !day.rules.includes(r)) : [];
   const c = g.camp;
   const warn: string[] = [];
   if (c.energy >= 2) warn.push("You're knackered - the shift will fly by.");
@@ -119,13 +130,17 @@ export function briefingScreen(g: GameState, onStart: () => void): HTMLElement {
       <div class="paper-date">${esc(fmtDate(day.date))} &middot; 40p</div>
       ${news}
     </div>
+    <div class="brief-rules">
+      <div class="br-head">TODAY'S RULES<small>Check the rulebook on your desk for details</small></div>
+      <ul>${recap}</ul>
+      ${off.length ? `<div class="br-off"><b>OFF TODAY:</b> ${off.map((r) => esc(ruleTitle(r))).join(', ')}</div>` : ''}
+    </div>
     <div class="memo-big">
       <div class="mb-head">GREYWATER FIELDS SECURITY<br><small>Gate 3 - Day ${day.n} of ${DAYS.length}</small></div>
       <div class="mb-ev" style="--ev:${day.event.color}">${esc(day.event.name)}<small>${esc(fmtShort(day.date))}</small></div>
       <div class="mb-scroll">
         ${warn.length ? `<div class="mb-warn">${warn.map(esc).join('<br>')}</div>` : ''}
         <div class="mb-body">${day.memo.map((m) => `<p>${esc(m)}</p>`).join('')}</div>
-        ${rules ? `<div class="mb-rules"><b>NEW RULES</b><ul>${rules}</ul></div>` : ''}
         <div class="mb-sign">- M. Kettle, Head of Gate Security</div>
       </div>
       <button class="btn btn-big btn-start">START SHIFT</button>

@@ -96,12 +96,12 @@ export const NIGHT_OPTIONS: Option[] = [
 ];
 
 export const SHOP: Option[] = [
-  { id: 'earplugs', label: 'Proper earplugs', cost: 20, desc: 'Loud nights stop draining Energy' },
-  { id: 'kettle', label: 'Camping kettle', cost: 25, desc: 'Pot noodles count as a full meal' },
-  { id: 'wipes', label: 'Bulk wet wipes', cost: 15, desc: 'Hygiene drops half as fast' },
-  { id: 'lights', label: 'Fairy lights for the tent', cost: 20, desc: '+1 Morale every night' },
-  { id: 'flask', label: 'Coffee flask', cost: 45, desc: 'Shift clock runs 10% slower' },
-  { id: 'mattress', label: 'Air mattress', cost: 60, desc: '+1 Energy every night' },
+  { id: 'earplugs', label: 'Proper earplugs', cost: 25, desc: 'Loud nights stop draining Energy' },
+  { id: 'kettle', label: 'Camping kettle', cost: 30, desc: 'Pot noodles count as a full meal' },
+  { id: 'wipes', label: 'Bulk wet wipes', cost: 20, desc: 'Hygiene drops half as fast' },
+  { id: 'lights', label: 'Fairy lights for the tent', cost: 25, desc: '+1 Morale every night' },
+  { id: 'flask', label: 'Coffee flask', cost: 55, desc: 'Shift clock runs 10% slower' },
+  { id: 'mattress', label: 'Air mattress', cost: 75, desc: '+1 Energy every night' },
 ];
 
 export const STAT_NAMES: Record<keyof Pick<Camp, 'hunger' | 'energy' | 'hygiene' | 'morale'>, { title: string; levels: string[]; effect: string }> = {

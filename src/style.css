@@ -1341,15 +1341,15 @@ img {
 .news h3 {
   font-family: var(--px);
   font-size: 10px;
-  line-height: 1.5;
-  margin: 10px 0 4px;
+  line-height: 1.4;
+  margin: 8px 0 3px;
 }
 .news.lead h3 {
   font-size: 15px;
 }
 .news p {
-  margin: 0 0 6px;
-  font-size: 19px;
+  margin: 0 0 4px;
+  font-size: 17px;
   color: #333;
 }
 .memo-big {
@@ -2287,4 +2287,86 @@ body {
 }
 .note-crayon .note-body {
   white-space: pre;
+}
+
+/* ---------- briefing: today's rules recap ---------- */
+.brief-rules {
+  position: absolute;
+  left: 46px;
+  bottom: 18px;
+  width: 424px;
+  background: #fffdf2;
+  color: #111;
+  border: 2px solid #e8b830;
+  padding: 7px 10px 8px;
+  transform: rotate(0.8deg);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.45);
+}
+.br-head {
+  font-family: var(--px);
+  font-size: 9px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid #d8c890;
+  padding-bottom: 4px;
+}
+.br-head small {
+  font-family: var(--vt);
+  font-size: 14px;
+  color: #777;
+}
+.brief-rules ul {
+  columns: 2;
+  column-gap: 10px;
+  margin: 5px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.brief-rules li {
+  break-inside: avoid;
+  font-size: 16px;
+  line-height: 1.02;
+  padding: 1px 0;
+}
+.brief-rules li.new {
+  background: #fff0a0;
+}
+.brief-rules li.hand {
+  color: #8a1a2a;
+}
+.brief-rules li em {
+  font-family: var(--px);
+  font-style: normal;
+  font-size: 6px;
+  color: #b07a00;
+  margin-left: 4px;
+  vertical-align: 2px;
+}
+.br-off {
+  margin-top: 5px;
+  font-size: 15px;
+  color: #666;
+}
+.br-off b {
+  font-family: var(--px);
+  font-size: 7px;
+  color: #444;
+}
+
+/* Kettle, going wrong */
+.face.in.still {
+  animation: none !important;
+}
+.face.in.tilt {
+  transform-origin: 50% 90%;
+  animation: tilt 7s ease-in-out infinite !important;
+}
+@keyframes tilt {
+  0%, 15%, 100% {
+    transform: none;
+  }
+  45%, 70% {
+    transform: rotate(11deg) translateX(4px);
+  }
 }

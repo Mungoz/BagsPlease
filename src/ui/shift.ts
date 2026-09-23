@@ -9,7 +9,7 @@ import {
 } from '../data/dialogue';
 import { ITEMS } from '../data/items';
 import { randomAttendee, type GenCtx } from '../gen';
-import { police as policeVisitor, randomVisitor } from '../data/visitors';
+import { kettleQuiz, police as policeVisitor, quizCount, randomVisitor } from '../data/visitors';
 import { faceURL } from '../gfx/portrait';
 import { dogSprite } from '../gfx/sprite';
 import { Scene } from '../gfx/scene';
@@ -196,6 +196,10 @@ export class Shift {
         for (let i = list.length - 1; i > 1; i--) if (list[i].visitor && list[i].first === 'Dev' && list[i].last === 'Okoro') list.splice(i, 1);
       }
     }
+    // Kettle's spot checks, spread through the part of the queue you'll actually reach.
+    const quizzes = quizCount(this.day);
+    const reach = this.day.seconds / 16;
+    for (let i = quizzes - 1; i >= 0; i--) list.splice(3 + Math.floor(((reach - 3) * (i + 0.5)) / quizzes), 0, kettleQuiz(ctx));
     // Someone who has to arrive straight after someone else (the twins) stays glued to them.
     for (const a of [...list]) {
       if (!a.after) continue;
@@ -784,8 +788,13 @@ export class Shift {
       this.transcript.lastElementChild?.classList.add('phantom');
     }
     this.faceImg.src = faceURL(a.face);
-    this.faceImg.classList.remove('hop', 'shake', 'nabbed', 'talk', 'glitch');
+    this.faceImg.classList.remove('hop', 'shake', 'nabbed', 'talk', 'glitch', 'still', 'tilt');
     if (this.day.weird >= 2 && (a.story === 'field' || a.story === 'you' || this.rng.chance(0.03 * this.day.weird))) this.faceImg.classList.add('glitch');
+    // Kettle stops breathing from day 4; from day 7 her head slowly tips over while she talks.
+    if (a.story === 'Marjorie Kettle' && this.day.weird >= 2) {
+      this.faceImg.classList.remove('glitch');
+      this.faceImg.classList.add(this.day.weird >= 3 ? 'tilt' : 'still');
+    }
     this.q('.window').classList.remove('flash-red');
     this.faceImg.classList.add('in');
     this.faceImg.classList.toggle('empty', a.story === 'nobody');
