@@ -350,7 +350,7 @@ img {
   position: absolute;
   right: 0;
   top: 160px;
-  width: 176px;
+  width: 196px;
   height: 270px;
   z-index: 20;
   transform: translateX(150px);
@@ -362,25 +362,52 @@ img {
 }
 .stamp-tab {
   position: absolute;
-  left: 2px;
-  top: 96px;
-  width: 24px;
-  height: 76px;
-  background: #3a3448;
+  left: 0;
+  top: 48px;
+  width: 46px;
+  height: 172px;
+  background: var(--gold);
   border: 3px solid #0d0b12;
   border-right: none;
+  border-radius: 8px 0 0 8px;
+  box-shadow: -3px 3px 0 rgba(0, 0, 0, 0.45), inset 3px 3px 0 rgba(255, 255, 255, 0.35), inset -3px -3px 0 rgba(0, 0, 0, 0.2);
   font-family: var(--px);
-  font-size: 8px;
-  text-align: center;
-  padding-top: 5px;
-  line-height: 1.45;
+  font-size: 13px;
+  color: #1a1622;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   cursor: pointer;
   pointer-events: auto;
-  color: var(--gold);
+  user-select: none;
+}
+.stamp-tab:hover {
+  filter: brightness(1.1);
+}
+.stamp-tab .tab-arrow {
+  font-size: 11px;
+  text-orientation: mixed;
+}
+.stamp-tray.open .stamp-tab {
+  background: #c8c0d8;
+}
+/* A ticket is waiting to be stamped and the tray is shut: make the tab hard to miss. */
+.stamp-tab.attn {
+  animation: tab-attn 0.9s ease-in-out infinite;
+}
+@keyframes tab-attn {
+  50% {
+    transform: translateX(-6px);
+    box-shadow: -3px 3px 0 rgba(0, 0, 0, 0.45), 0 0 16px 4px rgba(255, 210, 58, 0.8);
+  }
 }
 .stamp-slot {
   position: absolute;
-  left: 26px;
+  left: 46px;
   width: 150px;
   height: 130px;
 }
@@ -1834,6 +1861,7 @@ img {
   color: #c82a2a;
 }
 .mb-warn {
+  margin-bottom: 8px;
   background: #ffd8d8;
   border: 2px solid #c83a3a;
   padding: 6px 8px;
@@ -1918,4 +1946,185 @@ body {
 }
 .patdown .bag-info {
   margin: 4px 6px 6px;
+}
+
+/* Briefing text scrolls if it's long; the START SHIFT button always stays visible. */
+.mb-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+.mb-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.mb-scroll::-webkit-scrollbar-thumb {
+  background: #b8b0a0;
+}
+
+/* ---------- animation polish ---------- */
+.screen {
+  animation: screen-in 0.28s ease-out;
+}
+@keyframes screen-in {
+  from {
+    opacity: 0;
+  }
+}
+.face.in {
+  animation: breathe 3.2s ease-in-out infinite;
+}
+.face.in.talk {
+  animation: talk 0.26s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% {
+    transform: translateY(2px);
+  }
+}
+@keyframes talk {
+  50% {
+    transform: translateY(-3px) rotate(-1deg);
+  }
+}
+.face.hop {
+  animation: hop 0.45s ease-out !important;
+}
+@keyframes hop {
+  35% {
+    transform: translateY(-16px) rotate(3deg);
+  }
+  70% {
+    transform: translateY(0);
+  }
+}
+.face.shake {
+  animation: shake 0.45s ease-in-out !important;
+}
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-7px) rotate(-3deg);
+  }
+  40%,
+  80% {
+    transform: translateX(7px) rotate(3deg);
+  }
+}
+.face.nabbed {
+  animation: nabbed 0.3s ease-in forwards !important;
+}
+@keyframes nabbed {
+  to {
+    transform: translateY(40px) rotate(-12deg);
+  }
+}
+.window::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #ff2a2a;
+  opacity: 0;
+  pointer-events: none;
+}
+.window.flash-red::after {
+  animation: flash-red 0.9s ease-out;
+}
+@keyframes flash-red {
+  10%,
+  40% {
+    opacity: 0.45;
+  }
+  25%,
+  60% {
+    opacity: 0.1;
+  }
+}
+.mark {
+  transform: rotate(var(--rot, 0deg));
+  animation: stamp-in 0.22s ease-out;
+}
+@keyframes stamp-in {
+  from {
+    transform: rotate(var(--rot, 0deg)) scale(1.8);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(var(--rot, 0deg)) scale(0.92);
+    opacity: 1;
+  }
+}
+.docs-layer.jolt {
+  animation: jolt 0.18s ease-out;
+}
+@keyframes jolt {
+  30% {
+    transform: translateY(3px);
+  }
+  60% {
+    transform: translateY(-1px);
+  }
+}
+.ghost.to-bin {
+  transition: left 0.25s ease-in, top 0.25s ease-in, transform 0.25s ease-in, opacity 0.25s;
+  transform: scale(0.3) rotate(120deg) !important;
+  opacity: 0.2;
+}
+.bin.wobble {
+  animation: wobble 0.4s ease-out;
+}
+@keyframes wobble {
+  25% {
+    transform: rotate(-6deg) scale(1.05);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+  75% {
+    transform: rotate(-2deg);
+  }
+}
+.confetti {
+  position: absolute;
+  top: -12px;
+  width: 7px;
+  height: 11px;
+  pointer-events: none;
+  animation: confetti-fall linear infinite;
+}
+@keyframes confetti-fall {
+  to {
+    transform: translateY(580px) rotate(720deg);
+  }
+}
+.note-x {
+  position: absolute;
+  right: 6px;
+  top: 2px;
+  z-index: 2;
+  cursor: pointer;
+  color: #6a6050;
+}
+.note-x:hover {
+  color: #c83a3a;
+}
+.note-freefest .note-x {
+  right: 26px;
+}
+.rb-except {
+  display: block;
+  font-size: 15px;
+  color: #2a7a3a;
+  font-style: italic;
+}
+.tk-camping {
+  background: #3aa05a;
+  color: #fff;
+}
+.tk-weekend {
+  background: #3a6ac8;
+  color: #fff;
+}
+.tk-vip {
+  background: #e8b830;
 }

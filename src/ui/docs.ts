@@ -50,7 +50,7 @@ export function ticketEl(t: Ticket, evColor: string): HTMLElement {
   el.innerHTML = `
     <div class="tk-head">${f('ticket.event', t.event)}</div>
     <div class="tk-body">
-      <div class="tk-type">${f('ticket.type', t.type)}</div>
+      <div class="tk-type tk-${t.type.toLowerCase()}">${f('ticket.type', t.type)}</div>
       <div class="row"><label>NAME</label>${f('ticket.name', t.name)}</div>
       <div class="row"><label>VALID</label>${f('ticket.dates', dateRange(t.validFrom, t.validTo))}</div>
       <div class="row small"><label>No.</label>${f('ticket.number', t.number)}</div>
@@ -109,7 +109,7 @@ export function consentEl(c: Consent): HTMLElement {
 
 export function noteEl(n: Note): HTMLElement {
   const el = h('div', `doc note note-${n.style ?? 'plain'}`);
-  el.innerHTML = `<div class="note-body">${esc(n.body).replace(/\n/g, '<br>')}</div>${n.style === 'freefest' ? '<div class="note-feather"></div>' : ''}`;
+  el.innerHTML = `<span class="memo-x note-x" title="Throw away">&#10005;</span><div class="note-body">${esc(n.body).replace(/\n/g, '<br>')}</div>${n.style === 'freefest' ? '<div class="note-feather"></div>' : ''}`;
   return el;
 }
 
@@ -119,7 +119,45 @@ export function cashEl(amount: number): HTMLElement {
   return el;
 }
 
-const MAIN_W = 268;
+
+
+/** A description for a bit of clothing, e.g. "Damp red socks". */
+function clothName(kind: string, colour: string, rng: Rng): string {
+  const flavour: Record<string, string[]> = {
+    tshirt: ['band t-shirt (2009 tour)', 't-shirt, inside out', 't-shirt that says "I SURVIVED"', 't-shirt, suspiciously crispy'],
+    socks: ['socks (damp)', 'socks, odd pair', 'socks. Just socks. Thank god.', 'festival socks (day 3)'],
+    towel: ['towel, still wet', 'beach towel', 'towel. Nobody knows whose.'],
+    hoodie: ['hoodie (emergency layer)', 'hoodie that smells of campfire', 'oversized hoodie'],
+    jeans: ['spare jeans', 'jeans, extremely muddy', 'jeans rolled up like a burrito'],
+  };
+  const f = rng.pick(flavour[kind] ?? ['clothes']);
+  return `${colour[0].toUpperCase()}${colour.slice(1)} ${f}`;
+}
+
+// What you find in an empty side pocket (or an empty bag).
+const EMPTY_POCKET = [
+  'a single fluffy boiled sweet',
+  'a festival wristband from 2014',
+  'sand. So much sand. From where?',
+  'three hair bobbles and a guitar pick',
+  'a receipt for a £9.50 pint',
+  'a sad, deflated balloon',
+  'one earring. Just the one.',
+  'a crumpled setlist, signed "Dave"',
+  'a Polo mint of unknown vintage',
+  'a note that says BUY MILK',
+  'glitter. Everywhere. Forever.',
+  'a lighter that has never worked',
+  'a tiny plastic dinosaur',
+  'a bus ticket home they will definitely lose',
+  'a raffle ticket, number 47',
+  'half a Twix, wrapper still on',
+  'a photo of a cat, laminated',
+  'a phone number written on a napkin',
+  'a spare shoelace and a lot of fluff',
+  'a conker. In July.',
+];
+const EMPTY_BAG = ['just crumbs', 'nothing but a strong smell of Lynx', 'empty, apart from a moth', 'a bag full of other, smaller bags', 'just the lining. It is tartan.'];
 const CELL_W = 66;
 const CELL_H = 62;
 
@@ -141,41 +179,45 @@ export function bagEl(items: BagItem[], seed: number): HTMLElement {
   const main = el.querySelector('.bag-main') as HTMLElement;
   const pocketIn = el.querySelector('.pocket-in') as HTMLElement;
   const loose = items.filter((i) => !i.pocket);
-  // A tidy grid: one item per slot, so nothing is ever buried under another item.
-  const rows = Math.max(1, Math.ceil(loose.length / 4));
+  // A tidy grid: every item and every bit of clothing gets its own slot. Nothing overlaps.
+  const clothColors: [string, string][] = [
+    ['#c83a3a', 'red'], ['#3a6ac8', 'blue'], ['#2a2a2a', 'black'], ['#e8e8e8', 'white'], ['#3aa05a', 'green'],
+    ['#e0a030', 'mustard'], ['#8a4ac8', 'purple'], ['#e070a0', 'pink'], ['#40b0c0', 'teal'],
+  ];
+  const nClothes = loose.length >= 4 ? rng.int(1, 2) : loose.length ? rng.int(0, 1) : 0;
+  const slots: (BagItem | 'cloth')[] = rng.shuffle([...loose, ...Array<'cloth'>(nClothes).fill('cloth')]);
+  const rows = Math.max(1, Math.ceil(slots.length / 4));
   main.style.height = `${rows * CELL_H + 6}px`;
-  const spots: { x: number; y: number }[] = [];
-  rng.shuffle([...loose]).forEach((it, i) => {
-    const x = 4 + (i % 4) * CELL_W + rng.int(-2, 2);
-    const y = 4 + Math.floor(i / 4) * CELL_H + rng.int(-2, 2);
-    const cell = itemCell(it);
+  slots.forEach((slot, i) => {
+    const x = 4 + (i % 4) * CELL_W;
+    const y = 4 + Math.floor(i / 4) * CELL_H;
+    if (slot === 'cloth') {
+      // Clothes are just clutter: drag them out of the bag if they bother you.
+      const kind = rng.pick(CLOTH_IDS);
+      const [hex, colour] = rng.pick(clothColors);
+      const s = clothSprite(kind, hex);
+      const sc = Math.min(3.5, 58 / s.w, 54 / s.h);
+      const img = new Image();
+      img.src = s.url;
+      img.draggable = false;
+      img.className = 'cloth';
+      img.dataset.tip = clothName(kind, colour, rng) + ' - drag it out of the bag';
+      img.style.width = `${s.w * sc}px`;
+      img.style.height = `${s.h * sc}px`;
+      img.style.left = `${x + (58 - s.w * sc) / 2}px`;
+      img.style.top = `${y + (56 - s.h * sc) / 2}px`;
+      main.appendChild(img);
+      return;
+    }
+    const cell = itemCell(slot);
     cell.style.left = `${x}px`;
     cell.style.top = `${y}px`;
-    cell.style.transform = `rotate(${rng.int(-6, 6)}deg)`;
+    cell.style.transform = `rotate(${rng.int(-4, 4)}deg)`;
     main.appendChild(cell);
-    spots.push({ x, y });
   });
-  if (!loose.length) main.innerHTML = '<div class="bag-empty">(just crumbs)</div>';
-  // One or two bits of clothing, each lying over a different item.
-  const clothColors = ['#c83a3a', '#3a6ac8', '#2a2a2a', '#e8e8e8', '#3aa05a', '#e0a030', '#8a4ac8', '#e070a0', '#40b0c0'];
-  const covered = rng.shuffle([...spots]).slice(0, loose.length >= 4 ? 2 : loose.length ? 1 : 0);
-  for (const spot of covered) {
-    const s = clothSprite(rng.pick(CLOTH_IDS), rng.pick(clothColors));
-    const img = new Image();
-    img.src = s.url;
-    img.draggable = false;
-    img.className = 'cloth';
-    const w = s.w * 3.5;
-    const hh = s.h * 3.5;
-    img.style.width = `${w}px`;
-    img.style.height = `${hh}px`;
-    img.style.left = `${Math.max(0, Math.min(MAIN_W - w, spot.x + 28 - w / 2))}px`;
-    img.style.top = `${Math.max(0, spot.y + 28 - hh / 2)}px`;
-    img.style.transform = `rotate(${rng.int(-8, 8)}deg)`;
-    main.appendChild(img);
-  }
+  if (!loose.length) main.innerHTML = `<div class="bag-empty">(${rng.pick(EMPTY_BAG)})</div>`;
   for (const it of items.filter((i) => i.pocket)) pocketIn.appendChild(itemCell(it));
-  if (!pocketIn.children.length) pocketIn.innerHTML = '<div class="bag-empty">(a single fluffy boiled sweet)</div>';
+  if (!pocketIn.children.length) pocketIn.innerHTML = `<div class="bag-empty">(${rng.pick(EMPTY_POCKET)})</div>`;
 
   el.querySelector('.bag-zip')!.addEventListener('tap', () => {
     el.classList.remove('closed');
@@ -287,7 +329,11 @@ function rulesPage(day: DayDef): HTMLElement {
     .map((id) => {
       const r = RULES[id];
       const isNew = day.newRules.includes(id);
-      return `<div class="rb-rule f${isNew ? ' new' : ''}" data-field="book.rule:${id}"><span class="act act-${r.action.toLowerCase()}">${r.action}</span><b>${esc(r.title)}</b> ${esc(r.text)}</div>`;
+      // Once the police unit is in, weapons and drugs are a police matter, not just a deny.
+      const police = (id === 'bag_weapons' || id === 'bag_drugs') && day.rules.includes('detain');
+      const action = police ? 'POLICE' : r.action;
+      const extra = police ? ' CALL POLICE - denying them is not enough.' : '';
+      return `<div class="rb-rule f${isNew ? ' new' : ''}" data-field="book.rule:${id}"><span class="act act-${action.toLowerCase()}">${action}</span><b>${esc(r.title)}</b> ${esc(r.text)}${extra}</div>`;
     })
     .join('');
   return p;
@@ -304,9 +350,16 @@ function itemsPage(day: DayDef): HTMLElement {
     const row = h('div', 'rb-irow f');
     row.dataset.field = `book.group:${r.group}`;
     const action = r.group === 'weapon' || r.group === 'drug' ? (day.rules.includes('detain') ? 'POLICE' : 'DENY') : r.action;
-    row.innerHTML = `<span class="act act-${action.toLowerCase()}">${action}</span><b>${esc(r.title)}</b>`;
+    // Some bans have exceptions: say so right here, not just on the Rules page.
+    const except: Partial<Record<string, string>> = {
+      camping: 'unless they have a CAMPING ticket',
+      medication: 'unless their prescription matches (name, medicine, in date)',
+      replica: 'foam swords, wands & bright water pistols are fine',
+    };
+    const note = except[r.group!] ? `<span class="rb-except">${esc(except[r.group!]!)}</span>` : '';
+    row.innerHTML = `<span class="act act-${action.toLowerCase()}">${action}</span><b>${esc(r.title)}</b>${note}`;
     const icons = h('div', 'rb-icons');
-    const shown = r.group === 'drug' ? itemsInGroup('drug').filter((d) => d.id !== 'pillTin') : itemsInGroup(r.group!);
+    const shown = itemsInGroup(r.group!);
     for (const d of shown) {
       const img = new Image();
       img.src = itemSprite(d.id);
@@ -331,7 +384,7 @@ function docsPage(day: DayDef): HTMLElement {
     ${day.rules.includes('consent') ? '<div class="rb-sub">CONSENT FORMS</div><p>Child name = their ID. Dated today.</p>' : ''}
     ${day.rules.includes('guestlist') ? '<div class="rb-sub">PASSES</div><p>Name on pass must be on the Guest List with the same pass type, and match photo ID.</p>' : ''}
     <div class="rb-sub">CONTROLS</div>
-    <p>Drag papers around. Stamp tray: tab on right edge. Hand papers back: drag to the window. Magnifier / SPACE: inspect mode. M: mute.</p>`;
+    <p>Drag papers around. Stamp tray: yellow STAMP tab on the right edge (or press S). Hand papers back: drag to the window. Magnifier / SPACE: inspect mode. M: mute.</p>`;
   return p;
 }
 

@@ -54,7 +54,7 @@ export function titleScreen(
         <button class="btn btn-mute">${isMuted() ? 'SOUND: OFF' : 'SOUND: ON'}</button>
         ${canFullscreen() ? '<button class="btn btn-fs">FULLSCREEN</button>' : ''}
       </div>
-      <div class="title-foot">Progress saves automatically in this browser at the start of each day.<br>${isTouch() ? (canFullscreen() ? 'Tap anywhere to go fullscreen' : 'Tip: Share &gt; Add to Home Screen to play fullscreen') : 'Space = inspect &middot; Esc = pause &middot; M = mute'}</div>
+      <div class="title-foot">Progress saves automatically in this browser at the start of each day.<br>${isTouch() ? (canFullscreen() ? 'Tap anywhere to go fullscreen' : 'Tip: Share &gt; Add to Home Screen to play fullscreen') : 'S = stamps &middot; Space = inspect &middot; Esc = pause &middot; M = mute'}</div>
     </div>`;
   const scene = new Scene(el.querySelector('canvas')!);
   const rng = new Rng(Date.now() & 0xffff);
@@ -122,10 +122,12 @@ export function briefingScreen(g: GameState, onStart: () => void): HTMLElement {
     <div class="memo-big">
       <div class="mb-head">GREYWATER FIELDS SECURITY<br><small>Gate 3 - Day ${day.n} of ${DAYS.length}</small></div>
       <div class="mb-ev" style="--ev:${day.event.color}">${esc(day.event.name)}<small>${esc(fmtShort(day.date))}</small></div>
-      <div class="mb-body">${day.memo.map((m) => `<p>${esc(m)}</p>`).join('')}</div>
-      ${rules ? `<div class="mb-rules"><b>NEW RULES</b><ul>${rules}</ul></div>` : ''}
-      ${warn.length ? `<div class="mb-warn">${warn.map(esc).join('<br>')}</div>` : ''}
-      <div class="mb-sign">- M. Kettle, Head of Gate Security</div>
+      <div class="mb-scroll">
+        ${warn.length ? `<div class="mb-warn">${warn.map(esc).join('<br>')}</div>` : ''}
+        <div class="mb-body">${day.memo.map((m) => `<p>${esc(m)}</p>`).join('')}</div>
+        ${rules ? `<div class="mb-rules"><b>NEW RULES</b><ul>${rules}</ul></div>` : ''}
+        <div class="mb-sign">- M. Kettle, Head of Gate Security</div>
+      </div>
       <button class="btn btn-big btn-start">START SHIFT</button>
     </div>`;
   el.querySelector('.btn-start')!.addEventListener('click', () => {
@@ -164,7 +166,7 @@ export function campScreen(g: GameState, r: ShiftResult, onNext: (choice: NightC
   el.innerHTML = `
     <div class="sum-box">
       <div class="sum-top">
-        <div><h2>CREW CAMP - NIGHT ${day.n}</h2><div class="sum-sub">${esc(day.event.name)} &middot; ${r.correct}/${r.processed} correct${r.citations.length ? ` &middot; <span class="cit-inline" title="${esc(r.citations.join('\n'))}">${r.citations.length} citation${r.citations.length > 1 ? 's' : ''}</span>` : ' &middot; clean shift!'}</div></div>
+        <div><h2>CREW CAMP - NIGHT ${day.n}</h2><div class="sum-sub">${esc(day.event.name)} &middot; ${r.correct}/${r.processed} correct${r.citations.length ? ` &middot; <span class="cit-inline">${r.citations.length} citation${r.citations.length > 1 ? 's' : ''} (tap to read)</span>` : ' &middot; clean shift!'}</div></div>
         <div class="goal"><small>NAN'S NEW HIP FUND</small><div class="goal-bar"><i style="width:${Math.min(100, Math.max(0, (g.money / GOAL) * 100))}%"></i></div><small class="goal-n">£${g.money} / £${GOAL}</small></div>
       </div>
       <div class="sum-cols">
@@ -183,7 +185,11 @@ export function campScreen(g: GameState, r: ShiftResult, onNext: (choice: NightC
         </div>
       </div>
       <button class="btn btn-big btn-next-day">SLEEP</button>
+      <div class="cit-pop hidden"><h3>TODAY'S CITATIONS</h3><ul>${r.citations.map((c) => `<li>${esc(c)}</li>`).join('')}</ul><button class="btn cit-close">OK</button></div>
     </div>`;
+  const pop = el.querySelector('.cit-pop') as HTMLElement;
+  el.querySelector('.cit-inline')?.addEventListener('click', () => pop.classList.remove('hidden'));
+  el.querySelector('.cit-close')!.addEventListener('click', () => pop.classList.add('hidden'));
 
   const cost = () => {
     let t = MEALS[choice.meal].cost;
@@ -353,8 +359,18 @@ export function endingScreen(id: EndingId, g: GameState, onTitle: () => void): H
       </div>
       <button class="btn btn-big">BACK TO TITLE</button>
     </div>`;
-  if (e.good) sfx.jingle();
-  else sfx.sad();
+  if (e.good) {
+    sfx.jingle();
+    const cols = ['#ffd23a', '#ff5ab0', '#3ad8ff', '#8aff5a', '#ffffff', '#c05aff'];
+    for (let i = 0; i < 70; i++) {
+      const c = h('span', 'confetti');
+      c.style.left = `${Math.random() * 960}px`;
+      c.style.background = cols[i % cols.length];
+      c.style.animationDuration = `${3 + Math.random() * 4}s`;
+      c.style.animationDelay = `${-Math.random() * 6}s`;
+      el.appendChild(c);
+    }
+  } else sfx.sad();
   el.querySelector('button')!.addEventListener('click', onTitle);
   return el;
 }

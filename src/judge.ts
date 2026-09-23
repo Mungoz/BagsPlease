@@ -22,7 +22,7 @@ export function itemVerdict(item: BagItem, att: Attendee, day: DayDef): Verdict 
   if (g === 'pyro') return 'deny';
   if (g === 'medication') {
     const rx = att.rx;
-    const ok = !!rx && rx.name === fullName(att) && rx.med === item.label && rx.expiry >= day.date;
+    const ok = !!rx && rx.name === (att.id?.name ?? fullName(att)) && rx.med === item.label && rx.expiry >= day.date;
     return ok ? 'ok' : 'confiscate';
   }
   if (g === 'camping') return att.ticket.kind === 'ticket' && att.ticket.type === 'CAMPING' ? 'ok' : 'confiscate';
@@ -91,16 +91,32 @@ export function evaluate(att: Attendee, day: DayDef, decision: Decision, removed
   const confiscatable = verdicts.filter((x) => x.v === 'confiscate');
 
   if (decision === 'admit') {
-    if (shouldDeny) cites.push('Admitted: ' + (docs[0] ?? `carrying ${itemName(bad[0].i).toLowerCase()}`));
+    if (shouldDeny) {
+      if (docs[0]) cites.push('Admitted: ' + docs[0]);
+      else {
+        // Binning a weapon/drug doesn't make it OK: spell that out.
+        const x = bad[0];
+        const g = ITEMS[x.i.def].group;
+        const what = g === 'weapon' ? 'Weapons' : g === 'drug' ? 'Drugs' : 'Pyrotechnics';
+        const action = x.v === 'detain' ? 'CALL POLICE' : 'DENY';
+        const binned = removed.has(x.i.uid) ? ', even if binned' : '';
+        cites.push(`Admitted someone carrying ${itemName(x.i).toLowerCase()}: ${what} mean ${action}${binned}`);
+      }
+    }
     else {
       const left = confiscatable.filter((x) => !removed.has(x.i.uid));
-      if (left.length) cites.push(`Admitted with prohibited item: ${itemName(left[0].i).toLowerCase()}`);
+      if (left.length) {
+        // Say where it was, so it's clear this isn't the item you already binned.
+        const it = left[0].i;
+        const where = att.body.includes(it) ? ' (hidden on them)' : it.pocket ? ' (still in the side pocket)' : ' (still in the bag)';
+        cites.push(`Admitted with prohibited item: ${itemName(it).toLowerCase()}${where}`);
+      }
       if (att.dogAlert && !patted && day.rules.includes('k9')) cites.push('Ignored K9 alert: no pat-down');
     }
   } else if (decision === 'deny') {
     if (!shouldDeny)
       cites.push(confiscatable.length ? 'Wrongful denial: confiscate the item, then admit' : 'Wrongful denial: attendee was entitled to entry');
-    else if (detainable) cites.push(`Should have called the police: carrying ${itemName(bad.find((x) => x.v === 'detain')!.i).toLowerCase()}`);
+    else if (detainable) cites.push(`Should have called the police, not just denied: carrying ${itemName(bad.find((x) => x.v === 'detain')!.i).toLowerCase()} (weapons & drugs = CALL POLICE)`);
   } else if (!detainable) {
     cites.push('Wasted police time: nothing illegal on them');
   }
@@ -108,7 +124,13 @@ export function evaluate(att: Attendee, day: DayDef, decision: Decision, removed
   for (const x of verdicts) {
     if (removed.has(x.i.uid) && x.v === 'ok') {
       confiscatedOk++;
-      if (confiscatedOk === 1) cites.push(`Confiscated a permitted item: ${itemName(x.i).toLowerCase()}`);
+      if (confiscatedOk === 1) {
+        // Explain why it was allowed, for the rules with exceptions.
+        const g = ITEMS[x.i.def].group;
+        const why =
+          g === 'camping' ? ' (they had a CAMPING ticket)' : g === 'medication' && day.rules.includes('medication') ? ' (their prescription matched)' : GROUP_RULE[g] && !day.rules.includes(GROUP_RULE[g]!) ? " (not banned at today's event)" : '';
+        cites.push(`Confiscated a permitted item: ${itemName(x.i).toLowerCase()}${why}`);
+      }
     }
   }
   return { should, citations: cites, confiscatedOk };
@@ -135,6 +157,8 @@ export function checkPair(aKey: string, bKey: string, att: Attendee, day: DayDef
 
   if (has('ticket.name', 'id.name') && id && id.name !== t.name)
     return { kind: 'name', you: `The name on your ${t.kind === 'pass' ? 'pass' : 'ticket'} doesn't match your ID.` };
+  if (has('ticket.event', 'book.event') && (t.kind === 'beermat' || t.kind === 'card'))
+    return { kind: 'event', you: t.kind === 'beermat' ? "This is a beer mat. It's not a ticket." : "This is a business card. It's not a ticket." };
   if (has('ticket.event', 'book.event') && t.event !== day.event.name)
     return { kind: 'event', you: `This ticket is for ${t.event}. Today is ${day.event.name}.` };
   if (has('ticket.dates', 'clock') && (today < t.validFrom || today > t.validTo))
@@ -144,12 +168,12 @@ export function checkPair(aKey: string, bKey: string, att: Attendee, day: DayDef
   if (has('ticket.seal', 'book.seal') && t.seal !== day.event.seal)
     return { kind: 'seal', you: t.seal ? `This seal is ${t.seal.toLowerCase()}. It should be ${day.event.seal.toLowerCase()}.` : "Your ticket doesn't have a hologram seal." };
   if (id && has('id.expiry', 'clock') && id.expiry < today) return { kind: 'expired', you: 'Your ID has expired.' };
-  if (id && (has('id.dob', 'clock') || has('id.dob', 'book.age')) && ageOn(id.dob, today) < 18)
+  if (id && day.rules.includes('age_18') && (has('id.dob', 'clock') || has('id.dob', 'book.age')) && ageOn(id.dob, today) < 18)
     return { kind: 'age', you: `According to this you're ${ageOn(id.dob, today)}.` };
   if (id && has('id.photo', 'face') && !sameFace(id.photo, att.face)) return { kind: 'photo', you: "This photo isn't you." };
   if (id && has('id.type', 'book.idtypes') && !VALID_ID_TYPES.includes(id.type))
     return { kind: 'idtype', you: `A ${id.type.toLowerCase()} isn't valid ID.` };
-  if (att.rx && (has('rx.name', 'id.name') || has('rx.name', 'ticket.name')) && att.rx.name !== fullName(att))
+  if (att.rx && (has('rx.name', 'id.name') || has('rx.name', 'ticket.name')) && att.rx.name !== (id?.name ?? fullName(att)))
     return { kind: 'rxname', you: "This prescription is in someone else's name." };
   if (att.rx && oneOf('rx.med') && other('rx.med').startsWith('item:')) {
     const it = findItem(att, other('rx.med').slice(5));
@@ -161,7 +185,7 @@ export function checkPair(aKey: string, bKey: string, att: Attendee, day: DayDef
     return { kind: 'consentname', you: "This consent form isn't for you." };
   if (att.consent && has('consent.date', 'clock') && att.consent.date !== today)
     return { kind: 'consentdate', you: "This consent form isn't dated today." };
-  if (t.kind === 'pass' && has('ticket.name', 'book.guestlist') && !onGuestList(day, t.name, t.role))
+  if (t.kind === 'pass' && (has('ticket.name', 'book.guestlist') || has('ticket.type', 'book.guestlist')) && !onGuestList(day, t.name, t.role))
     return { kind: 'guestlist', you: "You're not on the guest list." };
   // item vs rulebook / ticket
   const itemKey = a.startsWith('item:') ? a : b.startsWith('item:') ? b : null;
@@ -177,7 +201,7 @@ export function checkPair(aKey: string, bKey: string, att: Attendee, day: DayDef
       }
     }
   }
-  if (has('face', 'book.age') && ageToday(att, day) < 18) return { kind: 'age', you: 'You look awfully young.' };
+  if (day.rules.includes('age_18') && has('face', 'book.age') && ageToday(att, day) < 18) return { kind: 'age', you: 'You look awfully young.' };
   return null;
 }
 

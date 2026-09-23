@@ -3,6 +3,13 @@ import type { ItemGroup } from './items';
 
 export const GREETS: Record<Genre | 'any', string[]> = {
   any: [
+    "Go on then, rummage. Everyone else has.",
+    "If you find my dignity in there, you can keep it.",
+    "Whatever you find in there, it was like that when I got it.",
+    "Be gentle. That bag has been through more than you have.",
+    "Do you get paid per bag or do you just enjoy this?",
+    "I was searched less going into prison. Visiting! I was VISITING.",
+    "Quick as you like, hi-vis. My pint is getting warm in my imagination.",
     'Alright? Here you go.',
     'Hiya.',
     'Is this the queue for the bar?',
@@ -76,10 +83,25 @@ export const GREETS: Record<Genre | 'any', string[]> = {
 };
 
 export const ADMIT_LINES = [
+  "Knew you would crack.",
+  "About bloody time.",
+  "See? Was that so hard, hi-vis?",
+  "Power trip over, is it?",
+  "Cheers, you absolute unit.",
+  "Right. I'm off to make some terrible decisions.",
   'Cheers!', 'Yes! Finally.', 'Nice one.', 'Ta.', 'Have a good one!', 'Legend.', 'Woo!', 'Thanks, mate.',
   "You're a hero. A hi-vis hero.", 'FREEDOM!', 'Right, where are the chips?', 'I love you. Platonically.',
 ];
 export const DENY_LINES = [
+  "Enjoy your little bit of power, jobsworth.",
+  "Hope your tent floods.",
+  "Mate, I've had friendlier searches at an airport.",
+  "One star. Would not be searched again.",
+  "You're the reason people hate festivals.",
+  "Wow. Did they give you a badge for that?",
+  "I'll just go round the back. There's always a round the back.",
+  "My nan could run this gate better. And she's in a home.",
+  "Is it the hat? It's the hat, isn't it.",
   "You're joking.",
   'I paid ninety quid for that!',
   'This is so unfair.',
@@ -93,10 +115,26 @@ export const DENY_LINES = [
   'My mum is going to hear about this.',
 ];
 export const DETAIN_LINES = [
+  "I've got rights! Well... I've got a Nando's card.",
+  "Not the police! I've got a festival to not remember!",
+  "Grass. You absolute grass.",
+  "Mum is going to KILL me. The police are the least of my worries.",
+  "Can I at least finish my can? No? Brutal.",
   'What? No! Get off me!', "It's not mine!", 'I want a lawyer!', "I'm holding it for a friend!", 'Oh no.',
   'These are not my trousers!', "Can I at least see the headliner first?",
 ];
-export const CONFISCATE_LINES = ["Oi, that's mine!", 'Seriously?', 'Fine, keep it.', 'That cost me a fiver!', 'Ugh. OK.'];
+export const CONFISCATE_LINES = [
+  "Oi, that's mine!",
+  "Seriously?",
+  "Fine, keep it.",
+  "That cost me a fiver!",
+  "Ugh. OK.",
+  "That's theft. That's literally theft.",
+  "You'll be having that later, won't you, you vulture.",
+  "Enjoy it. I hope it gives you hiccups.",
+  "I'm writing your name down. What's your name? Doesn't matter. I'm writing it down.",
+  "Bin it then. Bin my joy. Go on.",
+];
 
 /** Complaints specific to the kind of thing you just binned. */
 export const ITEM_QUIPS: Partial<Record<ItemGroup, string[]>> = {
@@ -124,6 +162,29 @@ export interface Trait {
 
 /** Personalities for random attendees. */
 export const TRAITS: Trait[] = [
+  {
+    id: "chancer",
+    greet: ["Alright, boss. Between you and me, I know the owner.", "You look like a reasonable person. Reasonable people don't check bags.", "Let's say I'm on the list. Let's just say that."],
+    admit: ["Pleasure doing business.", "Knew we understood each other.", "You've got a good face for this job. Trustworthy. Gullible."],
+    deny: ["Worth a shot.", "No hard feelings. Loads of soft ones, though.", "I'll try Gate 4. Gate 4 is soft."],
+    confiscate: ["That was a present. For you, actually. Keep it.", "Fair. Fair. Unfair, but fair."],
+    followup: ["(He winks. It is the least subtle wink you have ever seen.)"],
+  },
+  {
+    id: "aggro",
+    greet: ["What. WHAT. Just check it.", "Don't look at me like that, pillock.", "I've had four Red Bulls and an argument. Go on."],
+    admit: ["Finally. Muppet.", "Took your time, didn't you.", "Yeah. YEAH. Let's GO!"],
+    deny: ["You what?! You WHAT?!", "I'll be telling everyone. EVERYONE.", "Right. RIGHT. I'm getting my cousin. He's massive."],
+    confiscate: ["Touch my stuff again. Go on.", "That is ASSAULT. On my BAG."],
+    followup: ["(A vein is visibly throbbing in their forehead.)"],
+  },
+  {
+    id: "sarcastic",
+    greet: ["Oh wow, a bag search. My favourite part of any festival.", "Please, take your time. It's not like the headliner's on.", "Love the hi-vis. Very brave, fashion-wise."],
+    admit: ["Oh, thank you SO much. Truly, a hero walks among us.", "Wow. Life-changing. Thanks.", "I'll tell my grandchildren about this moment."],
+    deny: ["Brilliant. Best day ever. Genuinely.", "Oh no. Anyway.", "Slow clap for you. Slow. Clap."],
+    confiscate: ["Oh good, you've saved everyone from my deadly sun cream.", "Yes. Protect society from my crisps."],
+  },
   {
     id: 'lad',
     greet: ["Alright boss! Big weekend this, big weekend.", "LADS! We're HERE! Sorry. Hello.", "Mate. Mate. MATE. Let us in, mate."],
@@ -217,14 +278,14 @@ export const TRAITS: Trait[] = [
 ];
 
 export const EXCUSES: Record<string, string[]> = {
-  name: ["It's a typo. They always spell it wrong.", "That's my... stage name.", 'My mate bought it for me. Same thing, innit?', "Oh. That's my cousin's ticket.", "I changed my name last week. By deed poll. For a bet."],
+  name: ["Names are a social construct.", "Look, my mum couldn't spell. Neither could the DVLA.", "It's a typo. They always spell it wrong.", "That's my... stage name.", 'My mate bought it for me. Same thing, innit?', "Oh. That's my cousin's ticket.", "I changed my name last week. By deed poll. For a bet."],
   event: ["Isn't it all the same field?", "I bought it off a bloke outside. He said it'd work.", 'Oh no. Wrong weekend.', 'Music is music, man.'],
-  date: ["It's basically today.", 'I thought it was Saturday!', "Oh, is today not the..? Oh.", "The date doesn't matter, surely?", 'Time is a construct.'],
+  date: ["Dates are more of a guideline, aren't they?", "It's basically today.", 'I thought it was Saturday!', "Oh, is today not the..? Oh.", "The date doesn't matter, surely?", 'Time is a construct.'],
   number: ["I dunno, it came like that.", 'Numbers are just numbers, mate.', 'My mate printed it at work.', 'Is that a 0 or an O? Nobody knows.'],
   seal: ['The sticker fell off.', 'Seal? What seal?', 'I peeled it off. It was shiny.', 'My dog ate it. The seal. Not the ticket.'],
   expired: ["I've been meaning to renew it.", "It's only a bit out of date.", 'I still look the same though!', "It's vintage."],
-  age: ["I'm nearly eighteen.", "I'm... older than I look.", 'My birthday is really soon!', 'Please, my brother is inside.', "I've got a very old soul."],
-  photo: ["I've had a haircut.", "It's an old photo.", "That's me! I've just lost weight.", "It's... my twin.", 'The camera adds ten pounds. And a different face.'],
+  age: ["I'm eighteen in dog years. That counts.", "I pay council tax. Probably.", "I'm nearly eighteen.", "I'm... older than I look.", 'My birthday is really soon!', 'Please, my brother is inside.', "I've got a very old soul."],
+  photo: ["Have YOU ever looked good in a passport photo? Exactly.", "I've been through a lot since then, OK?", "I've had a haircut.", "It's an old photo.", "That's me! I've just lost weight.", "It's... my twin.", 'The camera adds ten pounds. And a different face.'],
   idtype: ["It's got my photo on it though!", "It's ID, isn't it? It's got an ID number.", "I didn't want to bring my passport to a field.", 'It says MEMBER on it. That\'s official.'],
   rxname: ["It's my mum's prescription. We take the same ones.", 'Same thing, different name.', 'My doctor made a mistake.'],
   rxmed: ['They gave me a different brand.', 'Same pills, different box.', 'Oh. Wrong bottle.'],
@@ -234,8 +295,8 @@ export const EXCUSES: Record<string, string[]> = {
   consentdate: ['Mum signed it yesterday.', "It's the same weekend!", 'Does the date really matter?'],
   guestlist: ["I'm definitely on the list. Check again.", 'Do you know who I am?', 'Must be a mistake. Call my agent.', "I'm on the list in spirit."],
   camping: ["It's just a little chair!", 'My back is bad. I need that chair.', "Can't I just sit on it for a bit?"],
-  item: ["Oh, that. I forgot it was in there.", "That's not mine. Honestly.", 'I need that!', 'Everyone brings one of those.', 'How did that get in there?!'],
-  contraband: ["I've never seen that before in my life.", 'Someone must have put that in there.', "It's for... personal use. Is that OK?", 'Uh.', "That's oregano. Very strong oregano."],
+  item: ["You're not going to believe this, but it's not mine.", "Everyone says that's allowed. Everyone.", "Oh, that. I forgot it was in there.", "That's not mine. Honestly.", 'I need that!', 'Everyone brings one of those.', 'How did that get in there?!'],
+  contraband: ["That's... for my nan. She has glaucoma. And a lot of friends.", "I'm more of a collector, really.", "Is it illegal if nobody finds it? Philosophically?", "I've never seen that before in my life.", 'Someone must have put that in there.', "It's for... personal use. Is that OK?", 'Uh.', "That's oregano. Very strong oregano."],
 };
 
 export const NO_DISCREPANCY = ['No discrepancy here.', 'These match.', 'Nothing wrong there.'];

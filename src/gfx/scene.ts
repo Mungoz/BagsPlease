@@ -66,6 +66,13 @@ export class Scene {
   private crowd: { x: number; y: number; c: string; h: number }[] = [];
   genre: Genre = 'rock';
   bannerDrop = false;
+  /** 'rain' draws falling drops over everything. */
+  weather: 'clear' | 'rain' = 'clear';
+  /** Fireworks over the stage (the finale). */
+  fireworks = false;
+  private drops: { x: number; y: number; v: number }[] = [];
+  private sparks: { x: number; y: number; vx: number; vy: number; life: number; c: string }[] = [];
+  private nextBurst = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     canvas.width = SW;
@@ -177,6 +184,38 @@ export class Scene {
   }
 
   private update(dt: number) {
+    if (this.weather === 'rain') {
+      while (this.drops.length < 140) this.drops.push({ x: Math.random() * (SW + 40), y: Math.random() * 75, v: 70 + Math.random() * 40 });
+      for (const d of this.drops) {
+        d.y += d.v * dt;
+        d.x -= d.v * 0.25 * dt;
+        if (d.y > 75) {
+          d.y = -2;
+          d.x = Math.random() * (SW + 40);
+        }
+      }
+    } else this.drops.length = 0;
+    if (this.fireworks) {
+      this.nextBurst -= dt;
+      if (this.nextBurst <= 0) {
+        this.nextBurst = 0.6 + Math.random() * 1.2;
+        const bx = 300 + Math.random() * 150;
+        const by = 20 + Math.random() * 14;
+        const col = ['#ff5ab0', '#ffd23a', '#3ad8ff', '#8aff5a', '#ffffff'][Math.floor(Math.random() * 5)];
+        for (let i = 0; i < 18; i++) {
+          const a = (i / 18) * Math.PI * 2;
+          const sp = 12 + Math.random() * 10;
+          this.sparks.push({ x: bx, y: by, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, c: col });
+        }
+      }
+    }
+    for (const p of this.sparks) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 14 * dt;
+      p.life -= dt * 0.9;
+    }
+    this.sparks = this.sparks.filter((p) => p.life > 0);
     this.pulse = Math.max(0, this.pulse - dt * 4);
     const all = [...this.queue, ...this.others, ...(this.current ? [this.current] : [])];
     for (const w of all) {
@@ -323,6 +362,18 @@ export class Scene {
     // people (sorted by y)
     const all = [...this.queue, ...this.others, ...(this.current ? [this.current] : [])].sort((a, b) => a.y - b.y);
     for (const w of all) drawPerson(c, w);
+    // fireworks
+    for (const p of this.sparks) {
+      c.globalAlpha = Math.max(0, p.life);
+      c.fillStyle = p.c;
+      c.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+    }
+    c.globalAlpha = 1;
+    // rain
+    if (this.drops.length) {
+      c.fillStyle = 'rgba(190,210,255,0.55)';
+      for (const d of this.drops) c.fillRect(Math.round(d.x), Math.round(d.y), 1, 3);
+    }
     // dusk tint
     if (t > 0.6) {
       c.fillStyle = `rgba(20,10,60,${(t - 0.6) * 0.5})`;

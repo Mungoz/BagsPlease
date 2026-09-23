@@ -25,6 +25,8 @@ function visitor(c: GenCtx, o: VisitorOpts): Attendee {
   Object.assign(a.face, o.face ?? {});
   a.visitor = true;
   a.bag = null;
+  a.body = [];
+  a.dogAlert = false;
   a.story = `${o.first} ${o.last}`;
   a.lines = { greet: o.greet };
   a.choice = { prompt: '', options: o.options };
@@ -81,7 +83,7 @@ function kettleQuiz(c: GenCtx): Attendee {
 }
 
 const POLICE_TIPS = [
-  "Word is there's pills going round in mint tins. Give them a shake.",
+  "Mint tin with the lid bulging open? That's pills. Every time.",
   "Dealers love a side pocket. Always unzip the side pocket.",
   "Keep an eye out for 'herbal tea'. It is never tea.",
   "Laughing gas is illegal now. Canisters, balloons - all of it.",
@@ -309,10 +311,137 @@ const POOL: Pool[] = [
   },
 ];
 
+// Festival-specific visitors.
+POOL.push(
+  {
+    genres: ['wellness'],
+    make: (c) =>
+      visitor(c, {
+        first: 'Saffron',
+        last: 'Wilde',
+        age: 38,
+        pres: 'f',
+        face: { hat: 4, paint: 3, earring: true },
+        greet: ["Have you seen a goat? Answers to Gerald. Eats hi-vis. He's in a very fragile place right now."],
+        options: [
+          { label: 'Check under the desk', reply: '(Gerald is under the desk. He has eaten the corner of your rulebook. He looks at peace.)', apply: better('morale') },
+          { label: "Haven't seen him", reply: "If you do, don't make eye contact. He sees it as a challenge." },
+        ],
+      }),
+  },
+  {
+    genres: ['edm'],
+    make: (c) =>
+      visitor(c, {
+        first: 'Glowstick',
+        last: 'Gaz',
+        age: 27,
+        pres: 'm',
+        face: { shades: 1, paint: 1, hat: 2, hatColor: 3 },
+        greet: ['Official glowsticks, boss. Very official. Look, it says OFFICIAL.', "(It says OFFCIAL.)"],
+        options: [
+          { label: 'Buy one (£1)', reply: 'Pleasure. That one glows for a lifetime. Or twenty minutes. Whichever comes first.', apply: (api) => { api.income('Dodgy glowstick', -1); better('morale')(api); } },
+          { label: "I'm reporting you", reply: '(He sprints off into the crowd, glowing guiltily.)' },
+        ],
+      }),
+  },
+  {
+    genres: ['metal'],
+    make: (c) =>
+      visitor(c, {
+        first: 'Dennis',
+        last: 'Crowley',
+        age: 52,
+        pres: 'm',
+        face: { hairStyle: 4, hair: 6, shirt: 2, beard: 3 },
+        greet: ["Where's the designated screaming area? My doctor says I need to get it out."],
+        options: [
+          { label: 'Right here', reply: '(He screams for eleven seconds. The dog joins in. You feel strangely refreshed.)', apply: better('morale') },
+          { label: "There isn't one", reply: "No wonder everyone's so tense." },
+        ],
+      }),
+  },
+  {
+    genres: ['folk'],
+    make: (c) =>
+      visitor(c, {
+        first: 'Nigel',
+        last: 'Bellamy',
+        age: 64,
+        pres: 'm',
+        face: { hat: 4, beard: 3, glasses: 1, old: true },
+        greet: ["Squire of the Lower Wetherby Morris Side. We'd like to dance through your gate. All twelve of us. It's tradition.", 'Since last Tuesday.'],
+        options: [
+          {
+            label: 'One dance. Quickly.',
+            reply: '(They dance. It takes twenty minutes. There are sticks. You have never felt more alive, or more behind schedule.)',
+            apply: (api) => {
+              better('morale')(api);
+              api.minutes(20);
+            },
+          },
+          { label: 'Absolutely not', reply: '(Twelve men jingle at you in disappointment.)' },
+        ],
+      }),
+  },
+  {
+    genres: ['rock', 'finale', 'metal'],
+    make: (c) =>
+      visitor(c, {
+        first: 'Deliveroo',
+        last: 'Dan',
+        age: 23,
+        pres: 'm',
+        face: { hat: 2, hatColor: 6 },
+        greet: ["Pizza for 'Tent 400, row W, the blue one, you can't miss it'."],
+        options: [
+          { label: 'Point at 40,000 blue tents', reply: '(He stares at the campsite for a very long time. A single tear rolls down his cheek.)' },
+          { label: '"That\'s me, actually"', reply: "Cheers. Rate me five stars. (Hunger improved. Guilt also improved.)", apply: better('hunger') },
+        ],
+      }),
+  },
+  {
+    genres: ['cosplay'],
+    make: (c) =>
+      visitor(c, {
+        first: 'Portaloo',
+        last: 'Pete',
+        age: 31,
+        pres: 'm',
+        face: { shirt: 1, shirtStyle: 2, hat: 0 },
+        greet: ["I've come as a portaloo. People keep queueing behind me. I don't know how to tell them."],
+        options: [
+          { label: 'Tell them for him', reply: '(Forty people disperse, furious. Pete mouths "thank you".)', apply: better('morale') },
+          { label: 'Charge them 20p', reply: "(Pete considers this. Pete is now running a business.)" },
+        ],
+      }),
+  },
+  {
+    genres: ['finale'],
+    make: (c) =>
+      visitor(c, {
+        first: 'Arthur',
+        last: 'Pennock',
+        age: 81,
+        pres: 'm',
+        face: { old: true, hair: 7, glasses: 1, hat: 5, hatColor: 5 },
+        greet: ["I've got every wristband since 1987 on this arm. Any chance of this year's? For the collection?"],
+        options: [
+          { label: 'Give him one', reply: "(He threads it on with trembling hands. The whole queue applauds. You're not crying, it's the rain.)", apply: better('morale') },
+          { label: 'Rules are rules', reply: "Quite right. Quite right. (He wanders off, jingling with plastic.)" },
+        ],
+      }),
+  },
+);
+
 /** A random visitor suitable for today. */
 export function randomVisitor(c: GenCtx): Attendee {
-  const ok = POOL.filter((p) => (!p.when || p.when(c.day)) && (!p.genres || p.genres.includes(c.day.event.genre)));
-  return c.rng.pick(ok).make(c);
+  const ok = POOL.filter((p, i) => (!p.when || p.when(c.day)) && (!p.genres || p.genres.includes(c.day.event.genre)) && (i === 0 || !c.used?.has('visitor:' + i)));
+  // Festival-specific visitors get a good share, otherwise the general crowd drowns them out.
+  const themed = ok.filter((p) => p.genres);
+  const chosen = themed.length && c.rng.chance(0.4) ? c.rng.pick(themed) : c.rng.pick(ok);
+  c.used?.add('visitor:' + POOL.indexOf(chosen));
+  return chosen.make(c);
 }
 
 export { kettleQuiz, police };

@@ -17,7 +17,7 @@ export const RULES: Record<RuleId, RuleDef> = {
     text: "Ticket must be for TODAY'S event and valid on today's date. Day tickets: that date only. Weekend/Camping/VIP: any day of the event.",
     action: 'DENY',
   },
-  bag_weapons: { id: 'bag_weapons', title: 'Weapons', text: 'Knives, knuckle-dusters, batons.', action: 'DENY', group: 'weapon' },
+  bag_weapons: { id: 'bag_weapons', title: 'Weapons', text: 'Knives, knuckle-dusters, batons. Binning them does not make it OK.', action: 'DENY', group: 'weapon' },
   bag_glass: { id: 'bag_glass', title: 'Glass', text: 'Glass bottles, jars and glass perfume bottles.', action: 'CONFISCATE', group: 'glass' },
   id_required: {
     id: 'id_required',
@@ -29,7 +29,7 @@ export const RULES: Record<RuleId, RuleDef> = {
   bag_drugs: {
     id: 'bag_drugs',
     title: 'Illegal drugs',
-    text: 'Pills, powders, cannabis, laughing gas - however it is disguised (mint tins, "herbal tea", side pockets...). Once the police unit arrives: CALL POLICE.',
+    text: 'Pills, powders, cannabis, laughing gas. Dealers disguise it: hover over anything suspicious to see what it really is (a mint tin that will not shut, "herbal tea"...). Check side pockets.',
     action: 'DENY',
     group: 'drug',
   },

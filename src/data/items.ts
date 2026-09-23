@@ -340,6 +340,17 @@ const S = {
     'kbbbbbbbbk',
     'kkkkkkkkkk',
   ],
+  pillTin: [
+    '..kkkkkkkkkkkk',
+    '.kwwwwwwwwwwwk',
+    'kwbbbbbbbbbbk.',
+    'kkkkkkkkkkkk..',
+    'kmwmkmwkmwmwwk',
+    'kwbmwbmwbmbwwk',
+    'kwbbbbbbbbbbwk',
+    'kwwwwwwwwwwwwk',
+    '.kkkkkkkkkkkk.',
+  ],
   mints: [
     '.kkkkkkkkkkkk.',
     'kwwwwwwwwwwwwk',
@@ -919,7 +930,7 @@ const defs: ItemDef[] = [
   { id: 'sandwich', name: 'Sandwich', group: 'safe', sprite: S.sandwich },
   { id: 'knitting', name: 'Knitting needles & wool', group: 'safe', sprite: S.knitting },
   { id: 'inhaler', name: 'Asthma inhaler', group: 'safe', sprite: S.inhaler },
-  { id: 'mints', name: 'Tin of mints', group: 'safe', sprite: S.mints },
+  { id: 'mints', name: 'Tin of mints (lid shut, just mints)', group: 'safe', sprite: S.mints },
   { id: 'mixtape', name: 'Mixtape', group: 'safe', sprite: S.mixtape },
   { id: 'banner', name: 'Rolled-up banner', group: 'safe', sprite: S.banner },
 
@@ -943,7 +954,7 @@ const defs: ItemDef[] = [
   { id: 'powder', name: 'Baggie of white powder', group: 'drug', sprite: S.powder },
   { id: 'weed', name: 'Baggie of cannabis', group: 'drug', sprite: S.weed },
   { id: 'nitrous', name: 'Laughing gas canisters & balloons', group: 'drug', sprite: S.nitrous },
-  { id: 'pillTin', name: 'Tin of mints (rattles oddly... full of pills)', group: 'drug', sprite: S.mints },
+  { id: 'pillTin', name: "Tin of 'mints' - lid won't shut, it's full of pills", group: 'drug', sprite: S.pillTin },
 
   { id: 'rxBottle', name: 'Prescription pills', group: 'medication', sprite: S.rxBottle },
 

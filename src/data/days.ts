@@ -151,7 +151,7 @@ export const DAYS: DayDef[] = [
     hints: [
       'Click the megaphone (NEXT!) to call the first person in the queue.',
       "Compare the ticket's EVENT and DATES with the TODAY page of your rulebook.",
-      'Open the stamp tray (tab on the right edge), put the ticket under a stamp and click it.',
+      'Open the stamp tray (yellow STAMP tab on the right, or press S), put the ticket under a stamp and click it.',
       'Drag the stamped ticket back to the booth window on the left to hand it back.',
     ],
   },

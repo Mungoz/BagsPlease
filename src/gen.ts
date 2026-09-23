@@ -1,5 +1,6 @@
 import { yearsBefore, type DayNum } from './dates';
 import { EVENTS, type DayDef, type Genre } from './data/days';
+import { ABSURD_GREETS, ARCHETYPES, type Archetype } from './data/archetypes';
 import { GREETS, TICS, TRAITS } from './data/dialogue';
 import { COMMON_SAFE, DAFT_SAFE, GENRE_SAFE, ITEMS, MEDICINES, itemsInGroup, type ItemGroup } from './data/items';
 import { DOCTORS, FIRST, LAST, misspell } from './data/names';
@@ -12,6 +13,8 @@ export interface GenCtx {
   day: DayDef;
   rng: Rng;
   state: GameState;
+  /** Archetypes, visitors and greetings already used today, so a queue never repeats itself. */
+  used?: Set<string>;
 }
 
 let uidN = 0;
@@ -59,6 +62,11 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
   const dob = yearsBefore(today, age, rng.int(1, 360));
   const face = randomFace(rng, { pres, old: age >= 58, young: age < 20, wild: o.wild ?? WILD[ev.genre] });
   if (ev.genre === 'metal' && rng.chance(0.6)) face.shirt = 2;
+  // A third of adults are one of this festival's own breed of weirdo.
+  const types = ARCHETYPES.filter((t) => t.genres.includes(ev.genre) && !ctx.used?.has('arch:' + t.id));
+  const arch = age >= 18 && types.length && rng.chance(0.35) ? rng.pick(types) : null;
+  if (arch) ctx.used?.add('arch:' + arch.id);
+  if (arch?.face) Object.assign(face, arch.face);
   const name = `${first} ${last}`;
 
   const single = ev.from === ev.to;
@@ -88,7 +96,7 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
     body: [],
     dogAlert: false,
     bribe: 0,
-    lines: personality(rng, ev.genre, age),
+    lines: arch ? archetypeLines(rng, arch) : personality(rng, ev.genre, age, ctx.used),
   };
 
   if (day.rules.includes('id_required')) {
@@ -104,6 +112,7 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
     if (flavour && rng.chance(0.5)) att.bag.push(mkItem(rng.pick(flavour)));
     if (rng.chance(0.15)) att.bag.push(mkItem(rng.pick(DAFT_SAFE)));
     if (rng.chance(0.45)) addDecoy(ctx, att);
+    for (const it of arch?.items ?? []) att.bag.push(mkItem(it.def, { name: it.name }));
     // Keys and wallets tend to live in the side pocket.
     for (const it of att.bag) if (['keys', 'wallet', 'lighter', 'cigarettes'].includes(it.def) && rng.chance(0.5)) it.pocket = true;
   }
@@ -116,12 +125,25 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
   return att;
 }
 
+function archetypeLines(rng: Rng, t: Archetype) {
+  const greet = [...t.greet];
+  if (t.followup && rng.chance(0.6)) greet.push(rng.pick(t.followup));
+  return {
+    greet,
+    admit: rng.pick(t.admit),
+    deny: rng.pick(t.deny),
+    confiscate: t.confiscate ? rng.pick(t.confiscate) : undefined,
+  };
+}
+
 /** Picks a personality and builds the attendee's lines from it. */
-function personality(rng: Rng, genre: Genre, age: number) {
+function personality(rng: Rng, genre: Genre, age: number, used?: Set<string>) {
   const pool = age >= 60 ? TRAITS.filter((t) => ['pensioner', 'grumpy', 'posh', 'dad', 'oversharer'].includes(t.id)) : age < 18 ? TRAITS.filter((t) => ['nervous', 'superfan', 'student', 'lad'].includes(t.id)) : TRAITS;
   const t = rng.chance(0.75) ? rng.pick(pool) : null;
-  const greetPool = t && rng.chance(0.55) ? t.greet : rng.chance(0.5) ? GREETS[genre] : GREETS.any;
+  const greetPool = t && rng.chance(0.55) ? t.greet : rng.chance(0.15) ? ABSURD_GREETS : rng.chance(0.5) ? GREETS[genre] : GREETS.any;
   let greet = rng.pick(greetPool);
+  for (let i = 0; i < 6 && used?.has(greet); i++) greet = rng.pick(rng.chance(0.5) ? GREETS.any : ABSURD_GREETS);
+  used?.add(greet);
   if (rng.chance(0.12)) greet += ' ' + rng.pick(TICS);
   const greetLines = [greet];
   if (t?.followup && rng.chance(0.35)) greetLines.push(rng.pick(t.followup));
@@ -141,9 +163,12 @@ function mkConsent(rng: Rng, att: Attendee, date: DayNum) {
 /** Adds an item that looks suspicious but is permitted today. */
 function addDecoy(ctx: GenCtx, att: Attendee) {
   const { rng, day } = ctx;
-  const groups: ItemGroup[] = rng.shuffle(['glass', 'alcohol', 'aerosol', 'unsealed', 'gadget', 'spikes', 'camping', 'medication', 'meat', 'flame', 'replica']);
+  // Nothing that looks like contraband before its rule exists (no prescription pills on day 2,
+  // no replica swords at a rock festival) - that just confuses people.
+  const groups: ItemGroup[] = rng.shuffle(['glass', 'alcohol', 'aerosol', 'unsealed', 'gadget', 'spikes', 'camping', 'medication', 'meat', 'flame']);
   for (const g of groups) {
     if (g === 'medication') {
+      if (!day.rules.includes('medication')) continue;
       const med = rng.pick(MEDICINES);
       att.bag!.push(mkItem('rxBottle', { label: med }));
       if (day.rules.includes('medication')) att.rx = mkRx(rng, fullName(att), med, day.date);

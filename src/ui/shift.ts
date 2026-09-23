@@ -10,7 +10,7 @@ import { randomAttendee, type GenCtx } from '../gen';
 import { police as policeVisitor, randomVisitor } from '../data/visitors';
 import { faceURL } from '../gfx/portrait';
 import { Scene } from '../gfx/scene';
-import { checkPair, evaluate } from '../judge';
+import { checkPair, evaluate, itemName } from '../judge';
 import { hashStr, Rng } from '../rng';
 import type { Attendee, BagItem, Decision, GameState, StoryApi } from '../types';
 import {
@@ -70,6 +70,9 @@ export class Shift {
   private paused = false;
   private inspecting = false;
   private selected: HTMLElement[] = [];
+  private streak = 0;
+  /** Set once the shift is torn down (quit or finished): pending timers must do nothing. */
+  private disposed = false;
   private elapsed = 0;
   private lastT = 0;
   private raf = 0;
@@ -117,7 +120,7 @@ export class Shift {
       </div>
       <div class="docs-layer"></div>
       <div class="stamp-tray">
-        <div class="stamp-tab">S<br>T<br>A<br>M<br>P</div>
+        <div class="stamp-tab" title="Stamps (S)"><span class="tab-arrow">&#9664;</span>STAMP</div>
         <div class="stamp-slot" data-kind="admit"><div class="stamp-target"></div><div class="stamp s-admit"><span>ADMIT</span></div></div>
         <div class="stamp-slot" data-kind="deny"><div class="stamp-target"></div><div class="stamp s-deny"><span>DENY</span></div></div>
       </div>
@@ -133,6 +136,9 @@ export class Shift {
     this.svg = this.q('.lines') as unknown as SVGSVGElement;
     this.scene = new Scene(this.q('.outside') as HTMLCanvasElement);
     this.scene.genre = day.event.genre;
+    // Ironclad's last day is a mudbath; any other outdoor day might drizzle.
+    this.scene.weather = day.n === 12 || (day.event.genre !== 'finale' && this.rng.chance(0.18)) ? 'rain' : 'clear';
+    this.scene.fireworks = day.event.genre === 'finale';
 
     this.q('.hud-date').textContent = fmtShort(day.date);
     this.q('.hud-ev').textContent = day.event.name;
@@ -153,7 +159,7 @@ export class Shift {
   // ---------- setup ----------
 
   private buildQueue() {
-    const ctx: GenCtx = { day: this.day, rng: this.rng, state: this.g };
+    const ctx: GenCtx = { day: this.day, rng: this.rng, state: this.g, used: new Set() };
     const used = new Set<string>();
     const list: Attendee[] = [];
     for (let i = 0; i < 70; i++) list.push(randomAttendee(ctx, used));
@@ -166,14 +172,19 @@ export class Shift {
     // Sprinkle in visitors who just want a word. PC Okoro drops by on the first drugs day.
     if (this.day.n >= 2) {
       for (let i = 3 + this.rng.int(0, 2); i < list.length; i += this.rng.int(4, 7)) list.splice(i, 0, randomVisitor(ctx));
-      if (this.day.newRules.includes('bag_drugs') || this.day.newRules.includes('detain')) list.splice(1, 0, policeVisitor(ctx));
+      if (this.day.newRules.includes('bag_drugs') || this.day.newRules.includes('detain')) {
+        // PC Okoro has already dropped by: keep him out of the random visitors today.
+        list.splice(1, 0, policeVisitor(ctx));
+        for (let i = list.length - 1; i > 1; i--) if (list[i].visitor && list[i].first === 'Dev' && list[i].last === 'Okoro') list.splice(i, 1);
+      }
     }
     this.queue = list;
   }
 
   private setupDesk() {
     const rb = rulebookEl(this.day);
-    this.addDoc(rb, 'rulebook', false, 670, 120);
+    // Right edge stops short of the STAMP tab so nothing on the page is hidden.
+    this.addDoc(rb, 'rulebook', false, 626, 120);
     if (this.day.guestList) this.addDoc(guestListEl(this.day), 'guestlist', false, 560, 127);
     if (this.day.hints.length) {
       const m = memoEl(this.day);
@@ -195,6 +206,8 @@ export class Shift {
     document.addEventListener('keydown', this.keyHandler);
     document.addEventListener('visibilitychange', this.visHandler);
     this.say('sys', `${this.day.event.name} - gates open. Call the first attendee.`);
+    this.showBanner('GATES OPEN');
+    if (this.scene.weather === 'rain') window.setTimeout(() => this.say('sys', 'It starts to rain. The whole queue groans at once.'), 1500);
     const loop = (t: number) => {
       const dt = Math.min(0.1, (t - (this.lastT || t)) / 1000);
       this.lastT = t;
@@ -205,6 +218,7 @@ export class Shift {
   }
 
   destroy() {
+    this.disposed = true;
     cancelAnimationFrame(this.raf);
     this.scene.stop();
     stopAmbient();
@@ -249,10 +263,11 @@ export class Shift {
   }
 
   private endShift() {
-    if (this.ended) return;
+    if (this.ended || this.disposed) return;
     this.ended = true;
     if (this.g.camp.hygiene >= 3) this.result.extras.push({ label: 'Kettle: "hygiene complaint"', amount: -5 });
     window.setTimeout(() => {
+      if (this.disposed) return;
       this.destroy();
       this.onEnd(this.result);
     }, 1800);
@@ -266,7 +281,7 @@ export class Shift {
     this.q('.btn-pat').addEventListener('click', () => this.patDown());
     this.q('.btn-inspect').addEventListener('click', () => this.toggleInspect());
     this.q('.stamp-tab').addEventListener('click', () => {
-      this.q('.stamp-tray').classList.toggle('open');
+      this.toggleTray();
       sfx.click();
     });
     this.root.querySelectorAll('.stamp').forEach((s) =>
@@ -296,11 +311,11 @@ export class Shift {
 
     // Tooltips for items.
     this.root.addEventListener('pointerover', (e) => {
-      const it = (e.target as HTMLElement).closest('.item, .rb-icons img') as HTMLElement | null;
+      const it = (e.target as HTMLElement).closest('.item, .cloth, .rb-icons img') as HTMLElement | null;
       if (it) this.identify(it);
     });
     this.root.addEventListener('pointerout', (e) => {
-      if (!(e.target as HTMLElement).closest('.item, .rb-icons img')) return;
+      if (!(e.target as HTMLElement).closest('.item, .cloth, .rb-icons img')) return;
       // On touch screens there is no hover, so leave the label up for a moment after a tap.
       if (e.pointerType === 'touch') window.setTimeout(() => this.tooltip.classList.add('hidden'), 1800);
       else this.tooltip.classList.add('hidden');
@@ -323,10 +338,22 @@ export class Shift {
     }
   }
 
+  private toggleTray(open?: boolean) {
+    const tray = this.q('.stamp-tray');
+    const isOpen = tray.classList.toggle('open', open);
+    const tab = this.q('.stamp-tab');
+    tab.classList.remove('attn');
+    tab.innerHTML = isOpen ? 'CLOSE<span class="tab-arrow">&#9654;</span>' : '<span class="tab-arrow">&#9664;</span>STAMP';
+  }
+
   private onKey(e: KeyboardEvent) {
+    if (this.paused && e.code !== 'Escape') return;
     if (e.code === 'Space') {
       e.preventDefault();
       this.toggleInspect();
+    } else if (e.code === 'KeyS' && !this.paused) {
+      this.toggleTray();
+      sfx.click();
     } else if (e.code === 'Escape') {
       this.setPaused(!this.paused);
     } else if (e.code === 'Enter' && !this.att) {
@@ -415,7 +442,7 @@ export class Shift {
         this.moveDoc(d, p.x - ox, p.y - oy);
         this.q('.booth').classList.toggle('drop-hot', this.overBooth(d) && d.owned && !!this.att);
       };
-      const up = () => {
+      const up = (ev: PointerEvent) => {
         d.el.removeEventListener('pointermove', move);
         d.el.removeEventListener('pointerup', up);
         d.el.removeEventListener('pointercancel', up);
@@ -424,7 +451,8 @@ export class Shift {
         this.q('.booth').classList.remove('drop-hot');
         if (moved) {
           sfx.drop();
-          if (this.overBooth(d)) this.dropOnBooth(d);
+          if (!d.owned && (d.kind === 'note' || d.kind === 'citation' || d.kind === 'memo') && (this.overBooth(d) || this.overBin(this.pt(ev)))) this.discard(d);
+          else if (this.overBooth(d)) this.dropOnBooth(d);
         } else {
           // Pointer capture swallows child clicks, so announce taps explicitly.
           target.dispatchEvent(new CustomEvent('tap', { bubbles: true }));
@@ -434,6 +462,12 @@ export class Shift {
       d.el.addEventListener('pointerup', up);
       d.el.addEventListener('pointercancel', up);
     });
+  }
+
+  /** Throw away a bit of paper that's yours (notes, citations, tips). */
+  private discard(d: DDoc) {
+    sfx.paper();
+    this.removeDoc(d);
   }
 
   private overBooth(d: DDoc) {
@@ -499,10 +533,21 @@ export class Shift {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       if (!ghost) return;
-      ghost.remove();
+      const g = ghost;
       cell.classList.remove('lifted');
-      this.q('.bin').classList.remove('hot');
-      if (this.overBin(this.pt(ev))) this.confiscate(uid, cell);
+      const bin = this.q('.bin');
+      bin.classList.remove('hot');
+      if (this.overBin(this.pt(ev))) {
+        const r = this.rel(bin.getBoundingClientRect());
+        g.classList.add('to-bin');
+        g.style.left = `${r.x + r.w / 2 - 27}px`;
+        g.style.top = `${r.y + r.h / 2 - 27}px`;
+        window.setTimeout(() => g.remove(), 260);
+        bin.classList.remove('wobble');
+        void bin.offsetWidth;
+        bin.classList.add('wobble');
+        this.confiscate(uid, cell);
+      } else g.remove();
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
@@ -510,6 +555,7 @@ export class Shift {
 
   /** Clothes can be shoved around inside the bag to see what's underneath. */
   private dragCloth(e: PointerEvent, cloth: HTMLElement) {
+    this.identify(cloth);
     e.preventDefault();
     e.stopPropagation();
     const main = cloth.parentElement as HTMLElement;
@@ -562,6 +608,7 @@ export class Shift {
     this.binCount++;
     this.q('.bin-count').textContent = String(this.binCount);
     sfx.bin();
+    this.say('sys', `Binned: ${itemName(item).toLowerCase()}.`);
     if (!this.confiscateSaid && this.att) {
       this.confiscateSaid = true;
       const quips = ITEM_QUIPS[ITEMS[item.def].group];
@@ -599,8 +646,9 @@ export class Shift {
     const mark = h('div', `mark mark-${kind}`, kind === 'admit' ? 'ADMITTED' : 'DENIED');
     mark.style.left = `${target.x + target.w / 2 - r.x - 45}px`;
     mark.style.top = `${target.y + target.h / 2 - r.y - 14}px`;
-    mark.style.transform = `rotate(${this.rng.int(-12, 12)}deg)`;
+    mark.style.setProperty('--rot', `${this.rng.int(-12, 12)}deg`);
     p.el.appendChild(mark);
+    this.jolt();
     this.decision = kind;
   }
 
@@ -632,6 +680,8 @@ export class Shift {
     this.transcript.innerHTML = '';
     if (this.rng.chance(0.2)) this.say('sys', this.rng.pick(QUEUE_BANTER));
     this.faceImg.src = faceURL(a.face);
+    this.faceImg.classList.remove('hop', 'shake', 'nabbed', 'talk');
+    this.q('.window').classList.remove('flash-red');
     this.faceImg.classList.add('in');
     if (this.day.rules.includes('k9')) {
       this.scene.setDog(a.dogAlert ? 'sit' : 'stand');
@@ -662,11 +712,20 @@ export class Shift {
       bag.el.addEventListener('tap', () => requestAnimationFrame(() => this.keepOnDesk(bag)));
     }
     if (a.consent) put(consentEl(a.consent), 'consent', 572, 126);
-    if (a.rx) put(rxEl(a.rx), 'rx', 580, 134);
+    if (a.rx && [...(a.bag ?? []), ...a.body].some((i) => i.def === 'rxBottle')) put(rxEl(a.rx), 'rx', 580, 134);
     if (a.id) put(idEl(a.id), 'id', 312, 254);
     off = 0;
     this.primary = put(ticketEl(a.ticket, ev), 'ticket', 308, 120);
-    for (const n of a.notes) put(noteEl(n), 'note', 420, 212, false);
+    window.setTimeout(() => {
+      if (this.att === a && !this.decision && !this.q('.stamp-tray').classList.contains('open')) this.q('.stamp-tab').classList.add('attn');
+    }, 3500);
+    for (const n of a.notes) {
+      const nd = put(noteEl(n), 'note', 420, 212, false);
+      nd.el.querySelector('.note-x')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.discard(nd);
+      });
+    }
     if (a.bribe) {
       put(cashEl(a.bribe), 'cash', 420, 412);
       sfx.cash();
@@ -691,9 +750,11 @@ export class Shift {
     if (this.att !== a) return;
     this.att = null;
     this.busy = true;
-    this.faceImg.classList.remove('in');
+    this.faceImg.classList.remove('in', 'talk');
     this.scene.leave('deny');
+    this.clearTurnState();
     window.setTimeout(() => {
+      if (this.disposed) return;
       this.busy = false;
       if (this.closed) this.endShift();
       else this.q('.btn-next').classList.remove('disabled');
@@ -715,10 +776,12 @@ export class Shift {
     }
     this.transcript.appendChild(box);
     this.transcript.scrollTop = this.transcript.scrollHeight;
+    // Safety net: a visitor never blocks the gate for more than 25 seconds.
+    if (a.visitor) window.setTimeout(() => this.leaveVisitor(a), 25000);
   }
 
   private patDown() {
-    if (!this.att || this.patted || !this.day.rules.includes('k9')) return;
+    if (!this.att || this.att.visitor || this.patted || !this.day.rules.includes('k9')) return;
     this.patted = true;
     sfx.pat();
     this.elapsed += (10 / (END_MIN - START_MIN)) * this.dayLen;
@@ -748,7 +811,7 @@ export class Shift {
       if (decision !== 'detain' && (a.gift || decision === 'admit')) {
         keptCash = true;
         this.result.extras.push({ label: a.gift ? `Gift from ${a.first}` : 'Cash from an attendee', amount: a.bribe });
-        this.g.flags.corruption++;
+        if (!a.gift) this.g.flags.corruption++;
         sfx.cash();
       } else if (decision === 'deny') {
         this.say('them', "I'll take that back, thank you.");
@@ -780,22 +843,79 @@ export class Shift {
       const pen = n <= 2 ? `Warning ${n} of 2 - no penalty` : `Penalty: £${FINE} deducted`;
       if (n > 2) this.result.fines += FINE;
       window.setTimeout(() => this.printCitation(out.citations[0], pen), 600);
+      this.streak = 0;
     } else {
       this.result.correct++;
       this.g.stats.correct++;
+      this.streak++;
+      const pay = this.g.camp.morale >= 3 ? PAY - 1 : PAY;
+      this.popReward(decision === 'detain' ? `+£${pay + 5} BUST!` : this.streak >= 3 ? `+£${pay} ✓ x${this.streak}` : `+£${pay} ✓`);
     }
 
-    this.faceImg.classList.remove('in');
+    this.react(decision === 'admit' ? 'hop' : decision === 'deny' ? 'shake' : 'nabbed');
     this.scene.leave(decision);
     if (this.day.rules.includes('k9')) this.scene.setDog('stand');
     this.primary = null;
     this.decision = null;
-    this.q('.stamp-tray').classList.remove('open');
+    this.toggleTray(false);
+    this.clearTurnState();
     window.setTimeout(() => {
+      if (this.disposed) return;
       this.busy = false;
       if (this.closed) this.endShift();
       else this.q('.btn-next').classList.remove('disabled');
     }, 900);
+  }
+
+  /** Clears things that belong to the person who just left. */
+  private clearTurnState() {
+    this.transcript.querySelectorAll('.choices').forEach((c) => c.remove());
+    this.binStack = [];
+    if (this.inspecting) this.toggleInspect(false);
+    this.svg.innerHTML = '';
+  }
+
+  /** Speech types out a couple of characters at a time; the face bobs while talking. */
+  private typeOut(line: HTMLElement, text: string) {
+    let i = 0;
+    this.faceImg.classList.add('talk');
+    const step = () => {
+      if (this.disposed || !line.isConnected) return;
+      i = Math.min(text.length, i + 2);
+      line.textContent = text.slice(0, i);
+      this.transcript.scrollTop = this.transcript.scrollHeight;
+      if (i < text.length) window.setTimeout(step, 16);
+      else this.faceImg.classList.remove('talk');
+    };
+    step();
+  }
+
+  /** Face reaction on the way out, then they slide away. */
+  private react(kind: 'hop' | 'shake' | 'nabbed') {
+    const face = this.faceImg;
+    face.classList.remove('talk');
+    face.classList.add(kind);
+    if (kind === 'nabbed') this.q('.window').classList.add('flash-red');
+    window.setTimeout(() => {
+      if (this.disposed) return;
+      face.classList.remove('in');
+    }, kind === 'nabbed' ? 250 : 450);
+  }
+
+  /** A quick jolt of the desk (stamp thump). */
+  private jolt() {
+    const l = this.docsLayer;
+    l.classList.remove('jolt');
+    void l.offsetWidth;
+    l.classList.add('jolt');
+  }
+
+  /** A little floating "+£5" by the counter: good calls should feel good. */
+  private popReward(text: string) {
+    const el = h('div', 'reward-pop', text);
+    this.root.appendChild(el);
+    sfx.ding();
+    window.setTimeout(() => el.remove(), 1300);
   }
 
   private printCitation(text: string, pen: string) {
@@ -809,9 +929,15 @@ export class Shift {
 
   private say(who: 'you' | 'them' | 'sys', text: string) {
     const line = h('div', `line line-${who}`);
-    line.textContent = text;
     this.transcript.appendChild(line);
-    while (this.transcript.children.length > 14) this.transcript.firstElementChild!.remove();
+    if (who === 'them') this.typeOut(line, text);
+    else line.textContent = text;
+    // Trim old lines, but never the reply buttons (a visitor waits for those).
+    while (this.transcript.children.length > 14) {
+      const old = [...this.transcript.children].find((c) => !c.classList.contains('choices'));
+      if (!old) break;
+      old.remove();
+    }
     this.transcript.scrollTop = this.transcript.scrollHeight;
   }
 
