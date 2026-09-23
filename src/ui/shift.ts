@@ -1,6 +1,8 @@
 import { clearBeatListeners, onBeat, sfx, startAmbient, stopAmbient } from '../audio';
 import { fmtShort } from '../dates';
 import { SCRIPTS } from '../data/characters';
+import { FIELD_SCRIPTS, makeYou, YOU_FACE } from '../data/field';
+import { PHANTOM_LINES, WEIRD_BANTER, WATCHER_PROGRESS, WEIRD_RADIO } from '../data/weird';
 import type { DayDef } from '../data/days';
 import {
   ADMIT_LINES, CONFISCATE_LINES, DENY_LINES, DETAIN_LINES, EXCUSES, ITEM_QUIPS, NO_DISCREPANCY, POLICE_ARRIVALS, POLICE_THANKS, QUEUE_BANTER, SMELL_REMARKS, YAWNS,
@@ -11,7 +13,7 @@ import { police as policeVisitor, randomVisitor } from '../data/visitors';
 import { faceURL } from '../gfx/portrait';
 import { dogSprite } from '../gfx/sprite';
 import { Scene } from '../gfx/scene';
-import { checkPair, evaluate, itemName } from '../judge';
+import { checkPair, evaluate, itemName, itemVerdict } from '../judge';
 import { hashStr, Rng } from '../rng';
 import type { Attendee, BagItem, Decision, GameState, StoryApi } from '../types';
 import {
@@ -72,6 +74,15 @@ export class Shift {
   private inspecting = false;
   private selected: HTMLElement[] = [];
   private streak = 0;
+  // The field: per-shift weirdness bookkeeping.
+  private ctx!: GenCtx;
+  private metYou = false;
+  private growled = false;
+  private burped = false;
+  private clockJumped = false;
+  private clockJumpAt = 0.3 + Math.random() * 0.3;
+  private radioI = 0;
+  private ghosts = 0;
   /** Set once the shift is torn down (quit or finished): pending timers must do nothing. */
   private disposed = false;
   private elapsed = 0;
@@ -107,7 +118,7 @@ export class Shift {
       <div class="hud"><span class="hud-date f" data-field="clock"></span><span class="hud-time"></span><span class="hud-ev"></span><span class="hud-count"></span></div>
       <button class="btn btn-pause" title="Pause (Esc)">II PAUSE</button>
       <div class="booth">
-        <div class="window"><div class="window-bg"></div><img class="face f" data-field="face" draggable="false"/><img class="k9 hidden" draggable="false" title="Sergeant, the sniffer dog"/><div class="k9-alert hidden">DOG ALERT!<br><small>PAT-DOWN them</small></div><div class="window-glass"></div></div>
+        <div class="window"><div class="window-bg"></div><img class="ghost" draggable="false" alt=""/><img class="face f" data-field="face" draggable="false"/><img class="k9 hidden" draggable="false" title="Sergeant, the sniffer dog"/><div class="k9-alert hidden">DOG ALERT!<br><small>PAT-DOWN them</small></div><div class="window-glass"></div></div>
         <div class="transcript"></div>
         <div class="booth-btns">
           <button class="btn btn-next">NEXT!</button>
@@ -140,6 +151,8 @@ export class Shift {
     // Ironclad's last day is a mudbath; any other outdoor day might drizzle.
     this.scene.weather = day.n === 12 || (day.event.genre !== 'finale' && this.rng.chance(0.18)) ? 'rain' : 'clear';
     this.scene.fireworks = day.event.genre === 'finale';
+    this.scene.eerie = day.weird;
+    this.scene.watcher = WATCHER_PROGRESS[day.n - 1] ?? -1;
 
     this.q('.hud-date').textContent = fmtShort(day.date);
     this.q('.hud-ev').textContent = day.event.name;
@@ -161,6 +174,7 @@ export class Shift {
 
   private buildQueue() {
     const ctx: GenCtx = { day: this.day, rng: this.rng, state: this.g, used: new Set() };
+    this.ctx = ctx;
     const used = new Set<string>();
     const list: Attendee[] = [];
     for (let i = 0; i < 70; i++) list.push(randomAttendee(ctx, used));
@@ -168,7 +182,7 @@ export class Shift {
     if (this.day.n === 1) {
       list[0] = randomAttendee({ ...ctx, day: { ...this.day, errorRate: 0 } }, used);
     }
-    const scripts = (SCRIPTS[this.day.n] ?? []).filter((s) => !s.when || s.when(this.g));
+    const scripts = [...(SCRIPTS[this.day.n] ?? []), ...(this.day.n < 99 ? FIELD_SCRIPTS[this.day.n] ?? [] : [])].filter((s) => !s.when || s.when(this.g));
     for (const s of scripts.sort((a, b) => a.at - b.at)) list.splice(s.at, 0, s.make(ctx));
     // Sprinkle in visitors who just want a word. PC Okoro drops by on the first drugs day.
     if (this.day.n >= 2) {
@@ -182,10 +196,29 @@ export class Shift {
         for (let i = list.length - 1; i > 1; i--) if (list[i].visitor && list[i].first === 'Dev' && list[i].last === 'Okoro') list.splice(i, 1);
       }
     }
+    // Someone who has to arrive straight after someone else (the twins) stays glued to them.
+    for (const a of [...list]) {
+      if (!a.after) continue;
+      const i = list.indexOf(a);
+      list.splice(i, 1);
+      list.splice(list.findIndex((x) => x.uid === a.after) + 1, 0, a);
+    }
     this.queue = list;
   }
 
   private setupDesk() {
+    const pages: [string, string][] = [
+      ['field_name', 'NEW RULE (not in Kettle\'s writing)\n\nIF THEY KNOW YOUR NAME\nDO NOT LET THEM IN.\n\nThey will tell you they know it.\nThey always tell you.'],
+      ['hollow', 'NEW RULE\n\nTHE HOLLOW-EYED ARE ALREADY INSIDE.\nThey cannot also be out here.\n\nDENY THEM.\nDo not look for long.'],
+    ];
+    for (const [rule, body] of pages) {
+      if (!this.day.newRules.includes(rule as never)) continue;
+      const nd = this.addDoc(noteEl({ from: '?', body, style: 'blood' }), 'note', false, 420, 300);
+      nd.el.querySelector('.note-x')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.discard(nd);
+      });
+    }
     const rb = rulebookEl(this.day);
     // Right edge stops short of the STAMP tab so nothing on the page is hidden.
     this.addDoc(rb, 'rulebook', false, 626, 120);
@@ -204,7 +237,7 @@ export class Shift {
     this.scene.start();
     this.scene.setQueue(this.queue.slice(0, 14).map((a) => a.face));
     if (this.day.rules.includes('k9')) this.setDog('stand');
-    startAmbient(this.day.event.genre);
+    startAmbient(this.day.event.genre, this.day.weird);
     clearBeatListeners();
     onBeat(() => this.scene.beat());
     document.addEventListener('keydown', this.keyHandler);
@@ -243,7 +276,15 @@ export class Shift {
     if (this.g.flags.bannerAdmitted && this.day.n === 15 && frac > 0.8) this.scene.bannerDrop = true;
     const hh = Math.floor(m / 60);
     const mm = Math.floor(m % 60);
-    this.q('.hud-time').textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    if (this.day.weird >= 4 && !this.clockJumped && !this.closed && frac > this.clockJumpAt) {
+      this.clockJumped = true;
+      this.elapsed = Math.max(0, this.elapsed - (30 / (END_MIN - START_MIN)) * this.dayLen);
+      this.say('sys', 'You check the clock. Half an hour ago happens again.');
+    }
+    const shown = this.day.weird >= 5 ? END_MIN - (m - START_MIN) : m;
+    const sh = Math.floor(shown / 60);
+    const sm = Math.floor(shown % 60);
+    this.q('.hud-time').textContent = this.day.weird >= 5 ? `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}` : `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
     this.q('.hud-count').textContent = `Processed: ${this.result.processed}`;
     if (!this.closed && this.g.camp.hunger >= 3 && frac >= 0.7) {
       // Starving stewards do not make it to 8pm.
@@ -255,6 +296,14 @@ export class Shift {
       if (!this.att && !this.busy) this.endShift();
       return;
     }
+    // Control keeps calling Gate 3.
+    const radio = WEIRD_RADIO[this.day.n] ?? [];
+    if (this.day.n < 99 && this.radioI < radio.length && frac >= radio[this.radioI].at && !this.closed) {
+      const r = radio[this.radioI++];
+      sfx.radio();
+      this.say('sys', r.text);
+      this.transcript.lastElementChild?.classList.add('radio');
+    }
     if (this.g.camp.energy >= 2 && !this.closed && Math.random() < dt / 25) this.say('sys', this.rng.pick(YAWNS));
     if (!this.closed && m >= END_MIN) {
       this.closed = true;
@@ -262,7 +311,7 @@ export class Shift {
       this.showBanner('GATES CLOSED');
       sfx.buzz();
       this.say('sys', 'Gates closed. Finish with the current attendee.');
-      if (!this.att && !this.busy) this.endShift();
+      if (!this.att && !this.busy) this.afterClose();
     }
   }
 
@@ -613,6 +662,27 @@ export class Shift {
     this.q('.bin-count').textContent = String(this.binCount);
     sfx.bin();
     this.say('sys', `Binned: ${itemName(item).toLowerCase()}.`);
+    const who = this.att;
+    if (this.day.weird >= 4 && !this.burped && who && itemVerdict(item, who, this.day) === 'confiscate' && this.rng.chance(0.35)) {
+      this.burped = true;
+      window.setTimeout(() => {
+        if (this.disposed || this.att !== who || !this.removed.has(uid)) return;
+        const i = this.binStack.findIndex((b) => b.uid === uid);
+        if (i < 0) return;
+        const [entry] = this.binStack.splice(i, 1);
+        this.removed.delete(uid);
+        entry.parent.appendChild(entry.cell);
+        entry.cell.classList.add('burped');
+        this.binCount--;
+        this.q('.bin-count').textContent = String(this.binCount);
+        const bin = this.q('.bin');
+        bin.classList.remove('wobble');
+        void bin.offsetWidth;
+        bin.classList.add('wobble');
+        sfx.bin();
+        this.say('sys', `The bin makes a small, wet noise and spits the ${itemName(item).toLowerCase()} back into the bag. Bin it again.`);
+      }, 1500);
+    }
     if (!this.confiscateSaid && this.att) {
       this.confiscateSaid = true;
       const quips = ITEM_QUIPS[ITEMS[item.def].group];
@@ -658,8 +728,21 @@ export class Shift {
 
   // ---------- attendee flow ----------
 
-  private callNext() {
-    if (this.att || this.busy || this.closed || this.ended) return;
+  /** Gates are shut and the window is empty: normally that's the end of the shift. */
+  private afterClose() {
+    if (this.day.n === 15 && !this.metYou && !this.g.camp.starving) {
+      this.metYou = true;
+      this.say('sys', 'Just as the gates close, the figure in hi-vis steps into the queue. The rest of the queue is gone.');
+      this.scene.summonWatcher();
+      this.queue.unshift(makeYou(this.ctx));
+      window.setTimeout(() => this.callNext(true), 1500);
+      return;
+    }
+    this.endShift();
+  }
+
+  private callNext(force = false) {
+    if (this.att || this.busy || (this.closed && !force) || this.ended) return;
     const next = this.queue.shift();
     if (!next) return;
     this.busy = true;
@@ -685,27 +768,46 @@ export class Shift {
     const seen = (this.g.flags.seen ??= []);
     if (a.seenKey && !seen.includes(a.seenKey)) seen.push(a.seenKey);
     // Queue banter: each line at most once per season.
+    const odd = WEIRD_BANTER.map((_, i) => i).filter((i) => WEIRD_BANTER[i][0] <= this.day.weird && !seen.includes('wbanter:' + i));
     const banter = QUEUE_BANTER.map((_, i) => i).filter((i) => !seen.includes('banter:' + i));
-    if (banter.length && this.rng.chance(0.2)) {
+    if (odd.length && this.rng.chance(0.1 + 0.06 * this.day.weird)) {
+      const i = this.rng.pick(odd);
+      seen.push('wbanter:' + i);
+      this.say('sys', WEIRD_BANTER[i][1]);
+    } else if (banter.length && this.rng.chance(0.2)) {
       const i = this.rng.pick(banter);
       seen.push('banter:' + i);
       this.say('sys', QUEUE_BANTER[i]);
     }
+    if (this.day.weird >= 2 && this.rng.chance(0.04 + 0.02 * this.day.weird)) {
+      this.say('you', this.rng.pick(PHANTOM_LINES));
+      this.transcript.lastElementChild?.classList.add('phantom');
+    }
     this.faceImg.src = faceURL(a.face);
-    this.faceImg.classList.remove('hop', 'shake', 'nabbed', 'talk');
+    this.faceImg.classList.remove('hop', 'shake', 'nabbed', 'talk', 'glitch');
+    if (this.day.weird >= 2 && (a.story === 'field' || a.story === 'you' || this.rng.chance(0.03 * this.day.weird))) this.faceImg.classList.add('glitch');
     this.q('.window').classList.remove('flash-red');
     this.faceImg.classList.add('in');
+    this.faceImg.classList.toggle('empty', a.story === 'nobody');
     if (this.day.rules.includes('k9')) {
       this.setDog(a.dogAlert ? 'sit' : 'stand');
       if (a.dogAlert) {
         sfx.bark();
         this.say('sys', 'Sergeant the sniffer dog SITS DOWN next to the attendee.');
+      } else if (this.day.weird >= 3 && !this.growled && this.rng.chance(0.2)) {
+        this.growled = true;
+        this.say('sys', 'Sergeant growls, low and steady. Not at them. At you.');
       }
     }
     const greet = [...a.lines.greet];
     if (!a.visitor && this.g.camp.hygiene >= 2 && this.rng.chance(0.35)) greet.push(this.rng.pick(SMELL_REMARKS));
     greet.forEach((l, i) => window.setTimeout(() => this.att === a && this.say('them', l), 300 + i * 900));
     if (a.visitor) {
+      // A visitor can leave something on the counter (the lost bag): it goes when they do.
+      if (a.bag) {
+        const bag = this.addDoc(bagEl(a.bag, a.seed), 'bag', true, 560, 224);
+        bag.el.addEventListener('tap', () => requestAnimationFrame(() => this.keepOnDesk(bag)));
+      }
       window.setTimeout(() => this.att === a && this.showChoice(a, a.choice!), 300 + greet.length * 900);
       return;
     }
@@ -764,11 +866,13 @@ export class Shift {
     this.busy = true;
     this.faceImg.classList.remove('in', 'talk');
     this.scene.leave('deny');
+    for (const d of [...this.docs]) if (d.owned) this.removeDoc(d, true);
     this.clearTurnState();
+    this.maybeGhost();
     window.setTimeout(() => {
       if (this.disposed) return;
       this.busy = false;
-      if (this.closed) this.endShift();
+      if (this.closed) this.afterClose();
       else this.q('.btn-next').classList.remove('disabled');
     }, 700);
   }
@@ -868,6 +972,7 @@ export class Shift {
 
     this.react(decision === 'admit' ? 'hop' : decision === 'deny' ? 'shake' : 'nabbed');
     this.scene.leave(decision);
+    this.maybeGhost();
     if (this.day.rules.includes('k9')) this.setDog('stand');
     this.primary = null;
     this.decision = null;
@@ -876,9 +981,24 @@ export class Shift {
     window.setTimeout(() => {
       if (this.disposed) return;
       this.busy = false;
-      if (this.closed) this.endShift();
+      if (this.closed) this.afterClose();
       else this.q('.btn-next').classList.remove('disabled');
     }, 900);
+  }
+
+  /** Between attendees, for a moment, someone is already at the window. Silent. It is always you. */
+  private maybeGhost() {
+    const w = this.day.weird;
+    if (w < 2 || this.ghosts >= (w >= 4 ? 3 : 1) || this.closed || !this.rng.chance(0.06 * w)) return;
+    this.ghosts++;
+    const ghost = this.q('.ghost') as HTMLImageElement;
+    window.setTimeout(() => {
+      if (this.disposed || this.att || this.paused) return;
+      ghost.src = faceURL(YOU_FACE);
+      ghost.classList.remove('show');
+      void ghost.offsetWidth;
+      ghost.classList.add('show');
+    }, 1000);
   }
 
   /** Sergeant in the booth window (and the tiny one outside). Sitting = sniffed something. */

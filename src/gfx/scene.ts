@@ -70,6 +70,14 @@ export class Scene {
   weather: 'clear' | 'rain' = 'clear';
   /** Fireworks over the stage (the finale). */
   fireworks = false;
+  /** How wrong things are (0-5). */
+  eerie = 0;
+  /** The figure in hi-vis beside the queue: 0 = far back, 1 = at the window, below 0 = not there. */
+  watcher = -1;
+  private blink = 0;
+  private blinkCooldown = 18 + Math.random() * 12;
+  private frozen = 0;
+  private freezeCooldown = 8;
   private drops: { x: number; y: number; v: number }[] = [];
   private sparks: { x: number; y: number; vx: number; vy: number; life: number; c: string }[] = [];
   private nextBurst = 0;
@@ -116,6 +124,7 @@ export class Scene {
     const initial = this.queue.length === 0;
     while (this.queue.length < faces.length) {
       const w = walkerFrom(faces[this.queue.length]);
+      if (this.eerie >= 5) w.shirt = '#e8e030';
       this.queue.push(w);
     }
     this.queue.length = faces.length;
@@ -125,6 +134,21 @@ export class Scene {
       // First fill: already standing in line. Later arrivals stroll in from just off the back of the queue.
       w.x = initial ? w.tx : Math.max(-12, w.tx - 30);
     }
+  }
+
+  private watcherWalker(): Walker {
+    const x = Math.round(6 + this.watcher * (WINDOW_X - 44));
+    const y = LANE_Y + 14;
+    return { skin: '#d8d0c8', hair: '#3a2a1a', shirt: '#e8e030', hat: null, x, y, tx: x, ty: y, speed: 12, phase: 0 };
+  }
+
+  /** Summer's End: the queue is gone, and the figure finally steps into it. */
+  summonWatcher() {
+    const w = this.watcherWalker();
+    this.watcher = -1;
+    w.ty = LANE_Y;
+    this.queue = [w];
+    this.layoutQueue();
   }
 
   private layoutQueue() {
@@ -184,6 +208,21 @@ export class Scene {
   }
 
   private update(dt: number) {
+    // From level 3 the queue sometimes just... stops, and everyone waits.
+    if (this.eerie >= 3) {
+      if (this.frozen > 0) this.frozen -= dt;
+      else if ((this.freezeCooldown -= dt) <= 0) {
+        this.frozen = 2 + Math.random() * 2;
+        this.freezeCooldown = 14 + Math.random() * 12;
+      }
+    }
+    // From level 3 you sometimes lose a moment. When you're back, the figure is a little closer.
+    if (this.blink > 0) this.blink -= dt;
+    if (this.eerie >= 3 && this.watcher >= 0 && (this.blinkCooldown -= dt) <= 0) {
+      this.blink = 0.16;
+      this.blinkCooldown = 22 + Math.random() * 18;
+      this.watcher = Math.min(0.99, this.watcher + 0.025);
+    }
     if (this.weather === 'rain') {
       while (this.drops.length < 140) this.drops.push({ x: Math.random() * (SW + 40), y: Math.random() * 75, v: 70 + Math.random() * 40 });
       for (const d of this.drops) {
@@ -219,6 +258,7 @@ export class Scene {
     this.pulse = Math.max(0, this.pulse - dt * 4);
     const all = [...this.queue, ...this.others, ...(this.current ? [this.current] : [])];
     for (const w of all) {
+      if (this.frozen > 0 && this.queue.includes(w)) continue;
       const dx = w.tx - w.x;
       const dy = w.ty - w.y;
       const d = Math.hypot(dx, dy);
@@ -284,7 +324,7 @@ export class Scene {
     c.fillRect(fx + 7, fy, 1, 20);
     // stage
     const cols = STAGE_COLORS[this.genre];
-    const col = cols[this.beatN % cols.length];
+    const col = this.eerie >= 2 && Math.random() < 0.02 * this.eerie ? '#ff1a1a' : cols[this.beatN % cols.length];
     c.fillStyle = '#22222c';
     c.fillRect(330, 26, 70, 13);
     c.fillStyle = '#3a3a48';
@@ -360,8 +400,17 @@ export class Scene {
     // dog
     if (this.dog !== 'none') drawDog(c, WINDOW_X + 22, LANE_Y + 3, this.dog === 'sit');
     // people (sorted by y)
-    const all = [...this.queue, ...this.others, ...(this.current ? [this.current] : [])].sort((a, b) => a.y - b.y);
+    const all = [...this.queue, ...this.others, ...(this.current ? [this.current] : [])];
+    const watcher = this.watcher >= 0 ? this.watcherWalker() : null;
+    if (watcher) all.push(watcher);
+    all.sort((a, b) => a.y - b.y);
     for (const w of all) drawPerson(c, w);
+    if (watcher) {
+      // It faces the booth. Two dark eyes, always.
+      c.fillStyle = '#1a0a0a';
+      c.fillRect(watcher.x + 1, watcher.y - 12, 1, 1);
+      c.fillRect(watcher.x + 3, watcher.y - 12, 1, 1);
+    }
     // fireworks
     for (const p of this.sparks) {
       c.globalAlpha = Math.max(0, p.life);
@@ -374,9 +423,18 @@ export class Scene {
       c.fillStyle = 'rgba(190,210,255,0.55)';
       for (const d of this.drops) c.fillRect(Math.round(d.x), Math.round(d.y), 1, 3);
     }
+    // the field: a red-brown pall that thickens
+    if (this.eerie >= 3) {
+      c.fillStyle = `rgba(60,0,10,${0.05 * (this.eerie - 2)})`;
+      c.fillRect(0, 0, SW, SH + V);
+    }
     // dusk tint
     if (t > 0.6) {
       c.fillStyle = `rgba(20,10,60,${(t - 0.6) * 0.5})`;
+      c.fillRect(0, 0, SW, SH + V);
+    }
+    if (this.blink > 0) {
+      c.fillStyle = '#000';
       c.fillRect(0, 0, SW, SH + V);
     }
     c.restore();

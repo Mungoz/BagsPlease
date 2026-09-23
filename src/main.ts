@@ -5,6 +5,7 @@ import { toggleMute, unlockAudio } from './audio';
 import { autoFullscreenOnFirstTap, canFullscreen, enterFullscreen } from './fullscreen';
 import { fmtShort } from './dates';
 import { DAYS, endlessDay } from './data/days';
+import { DAY_NIGHTS, WEIRD_NIGHTS } from './data/weird';
 import { applyNight, clearSave, getPref, load, newGame, save, setPref, type NightChoice } from './state';
 import type { GameState } from './types';
 import {
@@ -117,6 +118,16 @@ function night(g: GameState, choice: NightChoice) {
   delete g.pending;
   if (g.money < 0) return ending('skint', g);
   const news = applyNight(g, choice, DAYS[g.day].event.genre, r.citations.length, Math.random);
+  const lvl = DAYS[g.day].weird;
+  const seen = (g.flags.seen ??= []);
+  const tonight = DAY_NIGHTS[DAYS[g.day].n];
+  if (tonight) news.push(tonight);
+  const odd = WEIRD_NIGHTS.map((_, i) => i).filter((i) => WEIRD_NIGHTS[i][0] <= lvl && !seen.includes('wnight:' + i));
+  if (lvl && !tonight && odd.length && Math.random() < 0.5 + 0.1 * lvl) {
+    const i = odd[Math.floor(Math.random() * odd.length)];
+    seen.push('wnight:' + i);
+    news.push(WEIRD_NIGHTS[i][1]);
+  }
   const after = () => {
     if (g.flags.arrested) return ending('arrested', g);
     if (g.camp.starving >= 2) return ending('collapsed', g);

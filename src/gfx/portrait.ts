@@ -31,6 +31,10 @@ export interface FaceParams {
   goldJacket?: boolean;
   feather?: boolean;
   hiVis?: boolean;
+  /** Wrong faces, for when the festival goes strange. */
+  faceless?: boolean;
+  hollow?: boolean;
+  grin?: boolean;
 }
 
 export const SKINS: [string, string][] = [
@@ -120,8 +124,8 @@ export function photoOf(f: FaceParams): FaceParams {
 }
 
 export function sameFace(a: FaceParams, b: FaceParams): boolean {
-  const k: (keyof FaceParams)[] = ['skin', 'hair', 'hairStyle', 'headW', 'headH', 'jaw', 'eyeGap', 'eyeColor', 'brow', 'nose', 'mouth', 'beard'];
-  return k.every((x) => a[x] === b[x]);
+  const k: (keyof FaceParams)[] = ['skin', 'hair', 'hairStyle', 'headW', 'headH', 'jaw', 'eyeGap', 'eyeColor', 'brow', 'nose', 'mouth', 'beard', 'faceless'];
+  return k.every((x) => (a[x] ?? false) === (b[x] ?? false));
 }
 
 function shade(hex: string, amt: number): string {
@@ -470,6 +474,39 @@ export function drawFace(f: FaceParams, photo: boolean): HTMLCanvasElement {
       p.set(cx + rx + 1 + Math.floor(i / 2), top + 6 - i, '#3ac25a');
       p.set(cx + rx + 2 + Math.floor(i / 2), top + 6 - i, '#1f7a35');
     }
+  }
+
+  // --- wrong faces
+  if (f.faceless) {
+    // Smooth skin where the features should be. Hair and beard stay.
+    for (let y = eyeY - 3; y <= my + 2; y++)
+      for (let x = cx - rx; x < cx + rx; x++) if (inHead(x, y) && p.get(x, y) !== hairC && p.get(x, y) !== hairD) p.set(x, y, skin);
+  }
+  if (f.hollow) {
+    // Drained, grey skin...
+    const pale = '#b8b4ac';
+    const paleD = '#8e8a84';
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const px = p.get(x, y);
+        if (px === skin) p.set(x, y, pale);
+        else if (px === skinD) p.set(x, y, paleD);
+      }
+    // ...big black sockets, and something dark running down the cheeks.
+    for (const ex of [lx, rxE]) {
+      p.rect(ex - 1, eyeY - 2, 5, 5, '#2a2428');
+      p.rect(ex, eyeY - 1, 3, 3, '#050305');
+      p.rect(ex + 1, eyeY + 2, 1, 4, '#1a0a0e');
+      p.set(ex + 1, eyeY + 6, '#3a1016');
+    }
+  }
+  if (f.grin && !f.faceless) {
+    const w = rx - 2;
+    p.rect(cx - w, my - 1, w * 2, 1, '#3a0a0a');
+    for (let x = cx - w; x < cx + w; x++) p.set(x, my, x % 2 ? '#f4f1e8' : '#c8c0a8');
+    p.rect(cx - w, my + 1, w * 2, 1, '#3a0a0a');
+    p.set(cx - w - 1, my - 2, '#3a0a0a');
+    p.set(cx + w, my - 2, '#3a0a0a');
   }
 
   const c = document.createElement('canvas');

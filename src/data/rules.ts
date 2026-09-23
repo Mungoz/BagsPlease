@@ -103,6 +103,18 @@ export const RULES: Record<RuleId, RuleDef> = {
     action: 'CONFISCATE',
     group: 'flame',
   },
+  field_name: {
+    id: 'field_name',
+    title: '(handwritten) THEY KNOW YOUR NAME',
+    text: 'If they know your name, do not let them in. Do not tell Kettle. Do not tell them your name either.',
+    action: 'DENY',
+  },
+  hollow: {
+    id: 'hollow',
+    title: '(handwritten) THE HOLLOW-EYED',
+    text: 'The ones with no eyes are already inside. They cannot also be out here. DENY them. Do not look for long.',
+    action: 'DENY',
+  },
   replicas: {
     id: 'replicas',
     title: 'Replica weapons',

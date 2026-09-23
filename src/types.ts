@@ -26,7 +26,9 @@ export type RuleId =
   | 'guestlist'
   | 'vegan'
   | 'flames'
-  | 'replicas';
+  | 'replicas'
+  | 'field_name'
+  | 'hollow';
 
 export type TicketType = 'DAY' | 'WEEKEND' | 'CAMPING' | 'VIP';
 
@@ -74,7 +76,7 @@ export interface Consent {
 export interface Note {
   from: string;
   body: string;
-  style?: 'freefest' | 'plain' | 'megavibe';
+  style?: 'freefest' | 'plain' | 'megavibe' | 'blood' | 'crayon';
 }
 
 export interface BagItem {
@@ -148,6 +150,10 @@ export interface Attendee {
   visitor?: boolean;
   /** Marks this one as 'seen' for the season once they reach the window. */
   seenKey?: string;
+  /** Knows the steward's name. The handwritten rule says: deny. */
+  knowsYou?: boolean;
+  /** Must arrive straight after the attendee with this uid (the twins). */
+  after?: string;
 }
 
 /** The steward's own wellbeing, living in the crew campsite. 0 = fine ... 3 = critical. */
@@ -179,6 +185,8 @@ export interface GameState {
     dazzaThanked: boolean;
     /** Visitors, banter and crowd types already met this season - they never repeat. */
     seen?: string[];
+    /** What you did with the last person in the queue on Summer's End. */
+    selfAdmitted?: boolean | null;
   };
   stats: { processed: number; citations: number; detained: number; confiscated: number; correct: number };
   /** A finished shift waiting to be settled at crew camp (so closing the game there loses nothing). */

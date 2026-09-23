@@ -2,6 +2,7 @@ import { yearsBefore, type DayNum } from './dates';
 import { EVENTS, type DayDef, type Genre } from './data/days';
 import { ABSURD_GREETS, ARCHETYPES, type Archetype } from './data/archetypes';
 import { GREETS, TICS, TRAITS } from './data/dialogue';
+import { WEIRD_GREETS, WEIRD_ITEMS } from './data/weird';
 import { COMMON_SAFE, DAFT_SAFE, GENRE_SAFE, ITEMS, MEDICINES, itemsInGroup, type ItemGroup } from './data/items';
 import { DOCTORS, FIRST, LAST, misspell } from './data/names';
 import { lookalike, photoOf, randomFace, type Presentation } from './gfx/portrait';
@@ -62,6 +63,7 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
   const dob = yearsBefore(today, age, rng.int(1, 360));
   const face = randomFace(rng, { pres, old: age >= 58, young: age < 20, wild: o.wild ?? WILD[ev.genre] });
   if (ev.genre === 'metal' && rng.chance(0.6)) face.shirt = 2;
+  if (day.weird >= 2 && rng.chance(0.03 * day.weird)) face.grin = true;
   // A third of adults are one of this festival's own breed of weirdo.
   const types = ARCHETYPES.filter((t) => t.genres.includes(ev.genre) && !ctx.used?.has('arch:' + t.id) && !ctx.state.flags.seen?.includes('arch:' + t.id));
   const arch = age >= 18 && types.length && rng.chance(0.35) ? rng.pick(types) : null;
@@ -96,7 +98,7 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
     body: [],
     dogAlert: false,
     bribe: 0,
-    lines: arch ? archetypeLines(rng, arch) : personality(rng, ev.genre, age, ctx.used),
+    lines: arch ? archetypeLines(rng, arch) : weirdLines(ctx) ?? personality(rng, ev.genre, age, ctx.used),
     seenKey: arch ? 'arch:' + arch.id : undefined,
   };
 
@@ -114,6 +116,14 @@ export function baseAttendee(ctx: GenCtx, o: BaseOpts = {}): Attendee {
     if (rng.chance(0.15)) att.bag.push(mkItem(rng.pick(DAFT_SAFE)));
     if (rng.chance(0.45)) addDecoy(ctx, att);
     for (const it of arch?.items ?? []) att.bag.push(mkItem(it.def, { name: it.name }));
+    if (day.weird >= 1 && rng.chance(0.08 + 0.05 * day.weird)) {
+      const odd = WEIRD_ITEMS.filter(([lvl, it]) => lvl <= day.weird && !ctx.used?.has('witem:' + it.name));
+      if (odd.length) {
+        const [, it] = rng.pick(odd);
+        ctx.used?.add('witem:' + it.name);
+        att.bag.push(mkItem(it.def, { name: it.name }));
+      }
+    }
     // Keys and wallets tend to live in the side pocket.
     for (const it of att.bag) if (['keys', 'wallet', 'lighter', 'cigarettes'].includes(it.def) && rng.chance(0.5)) it.pocket = true;
   }
@@ -135,6 +145,17 @@ function archetypeLines(rng: Rng, t: Archetype) {
     deny: rng.pick(t.deny),
     confiscate: t.confiscate ? rng.pick(t.confiscate) : undefined,
   };
+}
+
+/** On strange days, some people say strange things. */
+function weirdLines(ctx: GenCtx) {
+  const { rng, day } = ctx;
+  if (!day.weird || !rng.chance(0.1 + 0.06 * day.weird)) return null;
+  const pool = WEIRD_GREETS.filter(([lvl, line]) => lvl <= day.weird && !ctx.used?.has(line));
+  if (!pool.length) return null;
+  const [, line] = rng.pick(pool);
+  ctx.used?.add(line);
+  return { greet: [line], admit: rng.pick(['Thank you. See you soon.', 'Welcome home.', '(They walk in without looking back.)']), deny: rng.pick(["That's alright. There's always next year.", "(They don't argue. They just smile.)", "I'll wait. I'm very good at waiting."]) };
 }
 
 /** Picks a personality and builds the attendee's lines from it. */
@@ -420,6 +441,27 @@ export const VIOLATIONS: Violation[] = [
   { kind: 'pyro', rule: 'bag_pyro', w: 2, apply: groupItem('pyro') },
   { kind: 'spikes', rule: 'bag_spikes', w: 2, apply: groupItem('spikes') },
   { kind: 'meat', rule: 'vegan', w: 3, apply: groupItem('meat') },
+  {
+    kind: 'knowsYou',
+    rule: 'field_name',
+    w: 3,
+    apply: (a, c) => {
+      a.knowsYou = true;
+      a.lines.greet = [c.rng.pick(["Hello, you. I know your name, you know. I won't say it. Not yet.", "Oh, it's you! We've all heard SO much about you. We know your name and everything.", "Don't worry. I know your name. Everyone inside knows your name."])];
+      a.lines.admit = 'We will see you inside. By name.';
+      a.lines.deny = "(They whisper something. It's your name. It's definitely your name.)";
+    },
+  },
+  {
+    kind: 'hollow',
+    rule: 'hollow',
+    w: 3,
+    apply: (a, c) => {
+      a.face.hollow = true;
+      a.lines.greet = [c.rng.pick(['(Where their eyes should be, there is nothing. They seem to look at you anyway.)', "It's so dark in here. Is it dark out there?", "(They turn towards you slowly, the way a sunflower turns.)"])];
+      a.lines.deny = "(They don't move for a long time. Then they are gone.)";
+    },
+  },
   { kind: 'flame', rule: 'flames', w: 3, apply: groupItem('flame') },
   { kind: 'replica', rule: 'replicas', w: 3, apply: groupItem('replica') },
   {

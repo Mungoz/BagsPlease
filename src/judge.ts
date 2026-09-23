@@ -62,6 +62,8 @@ export function docProblems(att: Attendee, day: DayDef): string[] {
       if (!sameFace(id.photo, att.face)) out.push('ID photo is someone else');
     }
   }
+  if (r.includes('field_name') && att.knowsYou) out.push('They knew your name (handwritten rule)');
+  if (r.includes('hollow') && att.face.hollow) out.push('Hollow-eyed (handwritten rule)');
   const age = ageToday(att, day);
   if (r.includes('age_18') && age < 18) out.push('Under 18');
   if (r.includes('consent') && age < 18) {

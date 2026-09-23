@@ -1,5 +1,6 @@
 import { mkDate, type DayNum } from '../dates';
 import type { RuleId } from '../types';
+import { WEIRD_HEADLINES, WEIRD_LEVELS, WEIRD_MEMOS } from './weird';
 
 export type Genre = 'rock' | 'edm' | 'folk' | 'metal' | 'finale' | 'wellness' | 'cosplay';
 
@@ -29,6 +30,8 @@ export interface DayDef {
   rent: number;
   guestList?: { name: string; real?: string; role: string }[];
   hints: string[];
+  /** 0 = a normal day ... 5 = the field has you. */
+  weird: number;
 }
 
 const RBR: EventDef = {
@@ -127,7 +130,7 @@ const R11: RuleId[] = [...R10, 'seal', 'ticket_code'];
 const R13: RuleId[] = [...without(R11, 'age_18'), 'consent', 'replicas'];
 const R15: RuleId[] = [...R11, 'guestlist'];
 
-export const DAYS: DayDef[] = [
+export const DAYS: DayDef[] = ([
   {
     n: 1,
     date: mkDate(2026, 6, 12),
@@ -475,7 +478,19 @@ export const DAYS: DayDef[] = [
     ],
     hints: ['Artists & crew show a PASS instead of a ticket. Check the GUEST LIST on your desk.'],
   },
-];
+] as Omit<DayDef, 'weird'>[]).map((d) => {
+  // The season goes wrong: weird headlines, odd memos, and handwritten rules nobody admits to writing.
+  const rules = [...d.rules];
+  const newRules = [...d.newRules];
+  if (d.n >= 9) rules.push('field_name');
+  if (d.n === 9) newRules.push('field_name');
+  if (d.n >= 12) rules.push('hollow');
+  if (d.n === 12) newRules.push('hollow');
+  const headlines = [...d.headlines];
+  if (WEIRD_HEADLINES[d.n]) headlines[2] = WEIRD_HEADLINES[d.n];
+  const memo = WEIRD_MEMOS[d.n] ? [...d.memo, WEIRD_MEMOS[d.n]] : d.memo;
+  return { ...d, rules, newRules, headlines, memo, weird: WEIRD_LEVELS[d.n - 1] ?? 0 };
+});
 
 /** Endless mode: every rule from the finale, no story, tougher mix. */
 export function endlessDay(): DayDef {
@@ -490,5 +505,7 @@ export function endlessDay(): DayDef {
     errorRate: 0.6,
     doubleRate: 0.25,
     seconds: 300,
+    weird: 0,
+    rules: base.rules.filter((r) => r !== 'field_name' && r !== 'hollow'),
   };
 }

@@ -144,6 +144,11 @@ export const sfx = {
       tone(880, 0.22, 'triangle', 0.13, i * 0.44 + 0.22, 740);
     }
   },
+  radio() {
+    noise(0.22, 0.22, 'bandpass', 1800, 0, 2);
+    tone(1150, 0.05, 'square', 0.06, 0.24);
+    noise(0.14, 0.16, 'bandpass', 2600, 0.3, 3);
+  },
   zip() {
     for (let i = 0; i < 7; i++) noise(0.025, 0.14, 'bandpass', 2200 + i * 250, i * 0.028, 4);
   },
@@ -173,11 +178,25 @@ export function onBeat(fn: () => void) {
   beatListeners.push(fn);
 }
 
-export function startAmbient(g: Genre) {
+let detune = 1;
+let drone: OscillatorNode | null = null;
+
+export function startAmbient(g: Genre, eerie = 0) {
   const c = ac();
   if (!c) return;
   genre = g;
   stopAmbient();
+  // The stranger the day, the flatter the music. And something underneath it.
+  detune = 1 - 0.018 * eerie;
+  if (eerie >= 3) {
+    drone = c.createOscillator();
+    const dg = c.createGain();
+    drone.type = 'sine';
+    drone.frequency.value = 38 + eerie;
+    dg.gain.value = 0.06 * (eerie - 2);
+    drone.connect(dg).connect(musicBus);
+    drone.start();
+  }
   nextBeat = c.currentTime + 0.1;
   beatN = 0;
   const lp = c.createBiquadFilter();
@@ -235,7 +254,7 @@ function scheduleBeat(c: AudioContext, out: AudioNode, t: number, n: number, spb
   };
   const root = ROOT[genre];
   const prog = [1, 1, 1.335, 1.5, 1.2, 1.2, 1.335, 1.5];
-  const f = root * prog[Math.floor(n / 8) % prog.length];
+  const f = root * prog[Math.floor(n / 8) % prog.length] * detune;
   switch (genre) {
     case 'edm':
     case 'cosplay':
@@ -266,6 +285,14 @@ function scheduleBeat(c: AudioContext, out: AudioNode, t: number, n: number, spb
 export function stopAmbient() {
   if (musicTimer !== null) window.clearInterval(musicTimer);
   musicTimer = null;
+  if (drone) {
+    try {
+      drone.stop();
+    } catch {
+      /* already stopped */
+    }
+    drone = null;
+  }
   if (crowd) {
     try {
       crowd.stop();

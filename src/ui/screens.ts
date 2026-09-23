@@ -167,7 +167,7 @@ export function campScreen(g: GameState, r: ShiftResult, onNext: (choice: NightC
     <div class="sum-box">
       <div class="sum-top">
         <div><h2>CREW CAMP - NIGHT ${day.n}</h2><div class="sum-sub">${esc(day.event.name)} &middot; ${r.correct}/${r.processed} correct${r.citations.length ? ` &middot; <span class="cit-inline">${r.citations.length} citation${r.citations.length > 1 ? 's' : ''} (tap to read)</span>` : ' &middot; clean shift!'}</div></div>
-        <div class="goal"><small>NAN'S NEW HIP FUND</small><div class="goal-bar"><i style="width:${Math.min(100, Math.max(0, (g.money / GOAL) * 100))}%"></i></div><small class="goal-n">£${g.money} / £${GOAL}</small></div>
+        <div class="goal"><small>${day.weird >= 5 ? 'NAN\'S HIP FUND (IS NAN STILL THERE?)' : day.weird >= 4 ? 'NAN\'S NEW HIP FUND (SHE HASN\'T CALLED)' : 'NAN\'S NEW HIP FUND'}</small><div class="goal-bar"><i style="width:${Math.min(100, Math.max(0, (g.money / GOAL) * 100))}%"></i></div><small class="goal-n">£${g.money} / £${GOAL}</small></div>
       </div>
       <div class="sum-cols">
         <div class="ledger">
@@ -348,18 +348,36 @@ export function endingScreen(id: EndingId, g: GameState, onTitle: () => void): H
     if (g.camp.owned.includes('lights')) epi.push('You keep the fairy lights. They go up in Nan\'s front window every summer.');
   }
   const acc = g.stats.processed ? Math.round((g.stats.correct / g.stats.processed) * 100) : 0;
+  // The season is over. The field isn't.
+  const coda: string[] = [];
+  if (e.good) {
+    if (g.flags.selfAdmitted === true)
+      coda.push(
+        'But first, the last person in the queue walked through Gate 3 wearing your face, and you took their place at the back of the queue.',
+        'Next summer, a new steward shouts "NEXT!". You step forward. Your ticket says SUMMER\'S END 1987. It always has.',
+      );
+    else if (g.flags.selfAdmitted === false)
+      coda.push(
+        'You sent the last one away. It did not mind. It said it was very good at waiting.',
+        'You get home at 3am. Nan opens the door before you knock. She is smiling, much too widely. "You\'re back," she says, in a voice made of a great many voices.',
+        'Behind her, the living room is a field.',
+      );
+    else coda.push('You never found out who was at the back of the queue. It knows who you are, though. It will be there next summer.');
+  }
+  if (coda.length) el.classList.add('field');
   el.innerHTML = `
     <div class="end-box">
       <h1>${esc(e.title)}</h1>
       ${e.text.map((t) => `<p>${esc(t)}</p>`).join('')}
       ${epi.length ? `<div class="epi">${epi.map((t) => `<p>${esc(t)}</p>`).join('')}</div>` : ''}
+      ${coda.length ? `<div class="end-coda">${coda.map((t) => `<p>${esc(t)}</p>`).join('')}</div>` : ''}
       <div class="end-stats">
         <span>Days worked: ${g.day + 1}</span><span>Processed: ${g.stats.processed}</span><span>Accuracy: ${acc}%</span>
         <span>Police called: ${g.stats.detained}</span><span>Items binned: ${g.stats.confiscated}</span><span>Savings: £${g.money}</span>
       </div>
       <button class="btn btn-big">BACK TO TITLE</button>
     </div>`;
-  if (e.good) {
+  if (e.good && !coda.length) {
     sfx.jingle();
     const cols = ['#ffd23a', '#ff5ab0', '#3ad8ff', '#8aff5a', '#ffffff', '#c05aff'];
     for (let i = 0; i < 70; i++) {

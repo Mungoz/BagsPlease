@@ -328,7 +328,8 @@ function rulesPage(day: DayDef): HTMLElement {
       const police = (id === 'bag_weapons' || id === 'bag_drugs') && day.rules.includes('detain');
       const action = police ? 'POLICE' : r.action;
       const extra = police ? ' CALL POLICE - denying them is not enough.' : '';
-      return `<div class="rb-rule f${isNew ? ' new' : ''}" data-field="book.rule:${id}"><span class="act act-${action.toLowerCase()}">${action}</span><b>${esc(r.title)}</b> ${esc(r.text)}${extra}</div>`;
+      const hand = id === 'field_name' || id === 'hollow' ? ' hand' : '';
+      return `<div class="rb-rule f${isNew ? ' new' : ''}${hand}" data-field="book.rule:${id}"><span class="act act-${action.toLowerCase()}">${action}</span><b>${esc(r.title)}</b> ${esc(r.text)}${extra}</div>`;
     })
     .join('');
   return p;

@@ -10,7 +10,7 @@ import { RULES } from './rules';
 // People who turn up at the window but aren't trying to get in: supervisors, police, lost kids,
 // burger vans... They talk, you pick a reply, they wander off. They don't count as processed.
 
-interface VisitorOpts {
+export interface VisitorOpts {
   first: string;
   last: string;
   age: number;
@@ -20,7 +20,7 @@ interface VisitorOpts {
   options: Choice[];
 }
 
-function visitor(c: GenCtx, o: VisitorOpts): Attendee {
+export function visitor(c: GenCtx, o: VisitorOpts): Attendee {
   const a = baseAttendee(c, { pres: o.pres, first: o.first, last: o.last, age: o.age, noBag: true });
   Object.assign(a.face, o.face ?? {});
   a.visitor = true;
@@ -37,8 +37,8 @@ const better = (k: 'hunger' | 'energy' | 'hygiene' | 'morale') => (api: StoryApi
   api.g.camp[k] = Math.max(0, api.g.camp[k] - 1);
 };
 
-const KETTLE: Partial<FaceParams> = { skin: 0, hair: 6, hairStyle: 5, headW: 9, headH: 11, jaw: 2, eyeColor: 1, brow: 2, mouth: 0, glasses: 2, hiVis: true, hat: 0, shades: 0, paint: 0 };
-const POLICE: Partial<FaceParams> = { hiVis: true, hat: 2, hatColor: 1, shades: 0, paint: 0, feather: false };
+export const KETTLE: Partial<FaceParams> = { skin: 0, hair: 6, hairStyle: 5, headW: 9, headH: 11, jaw: 2, eyeColor: 1, brow: 2, mouth: 0, glasses: 2, hiVis: true, hat: 0, shades: 0, paint: 0 };
+export const POLICE: Partial<FaceParams> = { hiVis: true, hat: 2, hatColor: 1, shades: 0, paint: 0, feather: false };
 
 /** Supervisor Kettle's pop quiz about one of today's rules. */
 function kettleQuiz(c: GenCtx): Attendee {

@@ -23,6 +23,7 @@ export function newGame(): GameState {
       arrested: false,
       dazzaThanked: false,
       seen: [],
+      selfAdmitted: null,
     },
     stats: { processed: 0, citations: 0, detained: 0, confiscated: 0, correct: 0 },
   };

@@ -2176,3 +2176,115 @@ body {
     color: #fff;
   }
 }
+
+/* ---------- the field ---------- */
+.note-blood {
+  background: #efe6d2;
+  border-left: 6px solid #5a0a10;
+  color: #6a0a14;
+  font-size: 19px;
+  letter-spacing: 0.5px;
+  transform: rotate(3deg);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45), inset 0 0 30px rgba(90, 30, 10, 0.25);
+}
+.face.glitch {
+  animation: glitch 2.6s steps(1) infinite !important;
+}
+@keyframes glitch {
+  0%, 86%, 100% {
+    transform: none;
+    filter: none;
+  }
+  88% {
+    transform: translateX(-5px) skewX(8deg);
+    filter: hue-rotate(160deg) contrast(1.6);
+  }
+  90% {
+    transform: translateX(4px);
+    filter: invert(0.15);
+  }
+  92% {
+    transform: translateY(-3px) scaleY(1.08);
+    filter: saturate(0) brightness(0.7);
+  }
+}
+.line-you.phantom {
+  color: #8a1a2a;
+  font-style: italic;
+}
+.item.burped {
+  animation: burped 0.9s ease-out 2;
+}
+@keyframes burped {
+  30% {
+    transform: scale(1.3) rotate(-10deg);
+    filter: drop-shadow(0 0 6px #ff3a3a);
+  }
+}
+.rb-rule.hand {
+  font-family: var(--vt);
+  color: #6a0a14;
+  background: #f4e8dc;
+  outline: 2px dashed #8a1a2a;
+  transform: rotate(-0.6deg);
+}
+.ending.field {
+  background: linear-gradient(#0a0508, #2a0a10 70%, #3a1a0a);
+}
+.end-coda {
+  margin-top: 16px;
+  color: #d88a8a;
+}
+.end-coda p {
+  font-size: 20px;
+}
+
+.line-sys.radio {
+  color: #7adf9a;
+  font-style: italic;
+  border-left: 3px solid #3a8a5a;
+  padding-left: 6px;
+}
+.line-sys.radio::before {
+  content: 'RADIO: ';
+  font-style: normal;
+  color: #3a8a5a;
+}
+.face.empty {
+  opacity: 0;
+}
+.ghost {
+  position: absolute;
+  width: 144px;
+  height: 144px;
+  left: 64px;
+  bottom: -2px;
+  opacity: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+  filter: grayscale(0.6) contrast(1.3);
+}
+.ghost.show {
+  animation: ghost 1.4s ease-in-out 1;
+}
+@keyframes ghost {
+  0%, 100% {
+    opacity: 0;
+  }
+  35%, 55% {
+    opacity: 0.22;
+  }
+}
+.note-crayon {
+  background: #fffdf4;
+  color: #2a4ac8;
+  font-family: var(--vt);
+  font-size: 16px;
+  line-height: 1.05;
+  white-space: pre;
+  border: 2px solid #e8d8a0;
+  transform: rotate(-2deg);
+}
+.note-crayon .note-body {
+  white-space: pre;
+}
